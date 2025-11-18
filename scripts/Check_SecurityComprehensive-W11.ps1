@@ -933,40 +933,6 @@ function Get-SecurityScore {
     return [math]::Round(($weightedScore / $maxWeight) * 100)
 }
 
-function Write-PhishingMenu {
-    <#
-    .SYNOPSIS
-        Helper function to draw the interactive menu
-    #>
-    param(
-        [int]$selectedOption,
-        [int]$menuTop
-    )
-    
-    # Reset cursor to the top of the menu area
-    [Console]::SetCursorPosition(0, $menuTop)
-    
-    # Define prefixes
-    $prefix1 = "  [ ]"
-    $prefix2 = "  [ ]"
-    
-    if ($selectedOption -eq 0) { 
-        $prefix1 = "  [*]" 
-    } else { 
-        $prefix2 = "  [*]" 
-    }
-    
-    # Draw options, clearing the rest of the line
-    $clearLine = " " * ([Console]::WindowWidth - 50) # 50 is approx length of text
-    
-    Write-Host "$prefix1 Open Phishing protection" -NoNewline -ForegroundColor White
-    Write-Host $clearLine
-    
-    [Console]::SetCursorPosition(0, $menuTop + 1)
-    Write-Host "$prefix2 Continue without opening" -NoNewline -ForegroundColor White
-    Write-Host $clearLine
-}
-
 function Show-SecuritySummary {
     <#
     .SYNOPSIS
@@ -996,73 +962,6 @@ function Show-SecuritySummary {
         Write-Host ""
     }
     Write-Host ("═" * 60) -ForegroundColor Blue
-
-    # Updated Warning Text - only show if there are disabled settings
-    $disabledCount = ($script:SecurityChecks | Where-Object { !$_.IsEnabled }).Count
-    if ($disabledCount -gt 0) {
-        Write-Host "  *NOTE: Phishing protection for Edge must be manually set!" -ForegroundColor Yellow
-    }
-
-    # --- Interactive Menu (COMMENTED OUT) ---
-    <#
-    $selectedOption = 0 # 0 = Open, 1 = Skip
-    $menuTop = [Console]::CursorTop # Store where the menu starts
-    $choiceMade = $false
-
-    # Hide cursor
-    $oldCursorVisible = [Console]::CursorVisible
-    [Console]::CursorVisible = $false
-    
-    while (!$choiceMade) {
-        # Draw the menu
-        Write-PhishingMenu -selectedOption $selectedOption -menuTop $menuTop
-        
-        # Get key press
-        $key = [System.Console]::ReadKey($true)
-        
-        switch ($key.Key) {
-            'UpArrow'   { $selectedOption = 0 }
-            'DownArrow' { $selectedOption = 1 }
-            # Enter confirms the currently selected option
-            'Enter' {
-                $choiceMade = $true
-            }
-            # Spacebar is now effectively the same as Enter on the second option
-            'Spacebar' {
-                if ($selectedOption -eq 1) {
-                    $choiceMade = $true
-                }
-            }
-        }
-    }
-    
-    # Restore cursor
-    [Console]::CursorVisible = $oldCursorVisible
-
-    # Clear the menu area (2 lines)
-    [Console]::SetCursorPosition(0, $menuTop)
-    Write-Host (" " * [Console]::WindowWidth)
-    [Console]::SetCursorPosition(0, $menuTop + 1)
-    Write-Host (" " * [Console]::WindowSize.Width)
-    [Console]::SetCursorPosition(0, $menuTop) # Reset cursor
-
-    # --- End Interactive Menu ---
-
-    # Perform action based on selection
-    if ($selectedOption -eq 0) {
-        if (Open-PhishingSettings) {
-            $text = "[o] Open Windows Security > App & browser control > Reputation-based protection > Phishing protection (affects Edge browser)"
-            $paddingWidth = [System.Math]::Max(0, $Host.UI.RawUI.WindowSize.Width - $text.Length)
-            $paddedText = (" " * $paddingWidth) + $text
-            Write-Host $paddedText -ForegroundColor Green
-        } else {
-            Write-Host "  ✗ Failed to open settings." -ForegroundColor Red
-        }
-    } else {
-        # This branch is now reached by selecting option 1 and pressing Enter, or pressing Space on option 1
-        Write-Host "  - Skipping Windows phishing protection setup." -ForegroundColor Gray
-    }
-    #>
     
     # Show critical issues if any
     if ($critical -gt 0) {
@@ -1091,43 +990,6 @@ function Show-SecuritySummary {
         Write-Host "   • Cloud-delivered Protection (limited effectiveness)" -ForegroundColor DarkGray
         Write-Host ""
         Write-Host "➜ Enable Real-time Protection first to activate these features" -ForegroundColor Cyan
-    }
-}
-
-function Open-PhishingSettings {
-    <#
-    .SYNOPSIS
-        Opens the Windows Security 'App & browser control' page
-        and attempts to send keystrokes to focus 'Reputation-based protection'.
-    #>
-    param()
-    
-    try {
-        # This URI opens the "App & browser control" page directly.
-        Start-Process -FilePath "windowsdefender://appbrowser"
-        
-        # Wait 2 seconds for the app to open and load
-        Start-Sleep -Seconds 2
-
-        # Attempt to send a 'TAB' key to move focus
-        $wshell = New-Object -ComObject WScript.Shell
-        
-        # Try to activate the window first to ensure it receives the keystroke
-        $activated = $wshell.AppActivate("Windows Security")
-        
-        if ($activated) {
-            Start-Sleep -Milliseconds 500 # Brief pause after activation
-            # Send 'TAB' twice to move focus
-            $wshell.SendKeys("{TAB 2}")
-        }
-        # Even if activation fails, the Start-Process likely succeeded.
-        return $true
-    }
-    catch {
-        # This block will run if the Start-Process command fails
-        Write-Host "`n[ERROR] Failed to open Windows Security. The URI scheme might not be supported on this system." -ForegroundColor Red
-        Write-Host "Error details: $_" -ForegroundColor Red
-        return $false
     }
 }
 
@@ -2692,7 +2554,7 @@ try {
     Clear-Host
     
     Write-Host "`n" -NoNewline
-    Write-Host "  WINDOWS SECURITY STATUS REPORT" -ForegroundColor White
+    Write-Host "  WINDOWS SECURITY STATUS REPORT" -ForegroundColor Green
     Write-Host ("═" * 60) -ForegroundColor Blue
 
     # Run all security checks
@@ -2746,7 +2608,6 @@ try {
     Write-Host "  ADDITIONAL OPTIONS" -ForegroundColor Cyan
     Write-Host ("═" * 60) -ForegroundColor Blue
     Write-Host "  Press 'R' to Run a quick scan" -ForegroundColor White
-    Write-Host "  Press 'O' to Open Phishing protection for Edge" -ForegroundColor White
 
     $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     Write-Host ""
@@ -2819,41 +2680,6 @@ try {
             Write-Host "  ⚠️  Could not start quick scan: $($_.Exception.Message)" -ForegroundColor Yellow
         }
     }
-    # Handle Open Phishing Protection
-    elseif ($key.Character -eq 'O' -or $key.Character -eq 'o') {
-        # Restart Windows Security first (quietly)
-        $null = Restart-WindowsSecurity -Quiet
-
-        # Open Phishing protection settings
-        try {
-            # Open Windows Security to App & browser control page
-            Start-Process -FilePath "windowsdefender://appbrowser" -ErrorAction Stop
-
-            # Wait for the app to open
-            Start-Sleep -Seconds 2
-
-            # Attempt to send keystrokes to navigate to Reputation-based protection
-            $wshell = New-Object -ComObject WScript.Shell
-            $activated = $wshell.AppActivate("Windows Security")
-
-            if ($activated) {
-                Start-Sleep -Milliseconds 500
-                # Press Tab twice to navigate to Reputation-based protection
-                $wshell.SendKeys("{TAB 2}")
-                Start-Sleep -Milliseconds 300
-                # Press Enter to open it
-                $wshell.SendKeys("{ENTER}")
-            }
-
-            Write-Host "  ✓ Opened Phishing protection settings" -ForegroundColor Green
-            Write-Host "  Go to Reputation-based protection > Phishing protection"
-        }
-        catch {
-            Write-Host "  ⚠️  Could not open Windows Security automatically" -ForegroundColor Yellow
-            Write-Host "     Open Windows Security manually and navigate to:" -ForegroundColor Gray
-            Write-Host "     App & browser control > Reputation-based protection > Phishing protection" -ForegroundColor Gray
-        }
-    }
     # Skip
     else {
         Write-Host "  No additional options selected" -ForegroundColor Gray
@@ -2863,7 +2689,7 @@ try {
     Write-Host "`n" -NoNewline
     Write-Host ("─" * 60) -ForegroundColor DarkGray
     # Set the timestamp this script was last edited
-    $lastEditedTimestamp = "2025-11-14"
+    $lastEditedTimestamp = "2025-11-18"
     Write-Host "  Last Edited: $lastEditedTimestamp" -NoNewline -ForegroundColor Gray
     Write-Host "     www.AIIT.support" -ForegroundColor Gray
     Write-Host ("─" * 60) -ForegroundColor DarkGray
@@ -2876,4 +2702,3 @@ try {
     Write-Host $_.ScriptStackTrace -ForegroundColor Gray
     exit 1
 }
-
