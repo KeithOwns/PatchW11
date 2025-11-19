@@ -25,18 +25,10 @@ function Write-StatusIcon {
     )
     
     if ($IsEnabled) {
-        Write-Host " " -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
-        Write-Host "✓" -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
-        Write-Host " " -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
+        Write-Host "✓" -NoNewline -ForegroundColor DarkCyan
         Write-Host " " -NoNewline
     } else {
-        $color = switch ($Severity) {
-            "Critical" { "Red" }
-            "Warning" { "Yellow" }
-            "Info" { "Gray" }
-            default { "Yellow" }
-        }
-        Write-Host " ✗ " -NoNewline -ForegroundColor $color
+        Write-Host " ✗ " -NoNewline -ForegroundColor DarkRed
     }
 }
 
@@ -50,8 +42,8 @@ function Write-SectionHeader {
     )
     
     Write-Host "`n$Icon " -NoNewline -ForegroundColor Cyan
-    Write-Host $Title -ForegroundColor White
-    Write-Host ("─" * 60) -ForegroundColor DarkGray
+    Write-Host $Title -ForegroundColor Cyan
+    Write-Host ("─" * 50) -ForegroundColor DarkBlue
 }
 
 # --- Original script functions ---
@@ -389,9 +381,8 @@ function Invoke-WinUpdateCheck {
 # --- Main ---
 Clear-Host
 Write-Host "`n" -NoNewline
-Write-Host ("═" * 60) -ForegroundColor Blue
-Write-Host "  WINDOWS UPDATE CONFIGURATOR" -ForegroundColor White
-Write-Host ("═" * 60) -ForegroundColor Blue
+Write-Host "WINDOWS UPDATE CONFIGURATOR" -ForegroundColor DarkGreen
+Write-Host ("═" * 50) -ForegroundColor DarkBlue
 
 Set-WUSettings
 Show-WUStatus
@@ -406,13 +397,13 @@ Invoke-WinUpdateCheck
 # Footer
 # $elapsed = ((Get-Date) - $script:StartTime).TotalSeconds
 Write-Host "`n" -NoNewline
-Write-Host ("─" * 60) -ForegroundColor DarkGray
+Write-Host ("─" * 50) -ForegroundColor DarkBlue
 # Write-Host "  ⏱️  Scan completed in " -NoNewline -ForegroundColor Gray
 # Write-Host "$([math]::Round($elapsed, 2)) seconds" -ForegroundColor White
 # Write-Host ""
-# Write-Host ("─" * 60) -ForegroundColor DarkGray
+# Write-Host ("─" * 50) -ForegroundColor DarkBlue
 # Set the timestamp this script was last edited
 $lastEditedTimestamp = "2025-11-12"
-Write-Host "Last Edited: $lastEditedTimestamp" -ForegroundColor Green
-Write-Host "www.AIIT.support all rights reserved" -ForegroundColor Green
-Write-Host ("─" * 60) -ForegroundColor DarkGray
+Write-Host "Last Edited: $lastEditedTimestamp" -NoNewline -ForegroundColor Gray
+Write-Host "    www.AIIT.support" -ForegroundColor Gray
+Write-Host ("─" * 50) -ForegroundColor DarkBlue
