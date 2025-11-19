@@ -385,7 +385,7 @@ Invoke-WinUpdateCheck
 Write-Host "`n" -NoNewline
 Write-Host ("─" * 50) -ForegroundColor DarkBlue
 # Set the timestamp this script was last edited
-$lastEditedTimestamp = "2025-11-12"
+$lastEditedTimestamp = "2025-11-19"
 Write-Host "Last Edited: $lastEditedTimestamp" -NoNewline -ForegroundColor Gray
 Write-Host "    www.AIIT.support" -ForegroundColor Gray
 Write-Host ("─" * 50) -ForegroundColor DarkBlue
