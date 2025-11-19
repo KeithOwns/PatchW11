@@ -10,9 +10,6 @@ $ErrorActionPreference = 'Stop'
   Core Isolation and PUA protection checks are handled by WindowsSecurityConfig.ps1
 #>
 
-# Global timer
-# $script:StartTime = Get-Date
-
 # --- New functions adapted from Security Script ---
 
 function Write-StatusIcon {
@@ -84,14 +81,6 @@ function Show-WUStatus {
     Write-StatusIcon ($mu -eq 1) -Severity "Warning"
     Write-Host "Receive updates for other Microsoft products" -ForegroundColor White
 
-    # $expedite = Get-RegistryValue -Path $WU_UX -Name "IsExpedited"
-    # Write-StatusIcon ($expedite -eq 1) -Severity "Warning"
-    # Write-Host "Get me up to date" -ForegroundColor White
-
-    # $metered = Get-RegistryValue -Path $WU_UX -Name "AllowAutoWindowsUpdateDownloadOverMeteredNetwork"
-    # Write-StatusIcon ($metered -eq 1) -Severity "Info"
-    # Write-Host "Download updates over metered connections" -ForegroundColor White
-
     $restartNotify = Get-RegistryValue -Path $WU_UX -Name "RestartNotificationsAllowed2"
     Write-StatusIcon ($restartNotify -eq 1) -Severity "Info"
     Write-Host "Notify me when a restart is required" -ForegroundColor White
@@ -147,8 +136,6 @@ function Set-WUSettings {
 
         # Configuring Advanced options
         Set-RegistryDword -Path $WU_UX -Name "AllowMUUpdateService" -Value 1
-        # Set-RegistryDword -Path $WU_UX -Name "IsExpedited" -Value 1
-        # Set-RegistryDword -Path $WU_UX -Name "AllowAutoWindowsUpdateDownloadOverMeteredNetwork" -Value 1
         Set-RegistryDword -Path $WU_UX -Name "RestartNotificationsAllowed2" -Value 1
         
         # Configuring Sign-in options
@@ -395,13 +382,8 @@ Invoke-MSStoreUpdateCheck
 Invoke-WinUpdateCheck
 
 # Footer
-# $elapsed = ((Get-Date) - $script:StartTime).TotalSeconds
 Write-Host "`n" -NoNewline
 Write-Host ("─" * 50) -ForegroundColor DarkBlue
-# Write-Host "  ⏱️  Scan completed in " -NoNewline -ForegroundColor Gray
-# Write-Host "$([math]::Round($elapsed, 2)) seconds" -ForegroundColor White
-# Write-Host ""
-# Write-Host ("─" * 50) -ForegroundColor DarkBlue
 # Set the timestamp this script was last edited
 $lastEditedTimestamp = "2025-11-12"
 Write-Host "Last Edited: $lastEditedTimestamp" -NoNewline -ForegroundColor Gray
