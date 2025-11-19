@@ -73,6 +73,7 @@ param(
 $script:SecurityChecks = @()
 $script:BaselineData = $null
 $script:RealTimeProtectionEnabled = $true  # Track if real-time protection is on
+$script:ScanStatusAllGreen = $false # Track scan status for summary display
 
 # Security check result class
 class SecurityCheck {
@@ -159,16 +160,12 @@ function Write-StatusIcon {
     )
     
     if ($IsEnabled) {
-        Write-Host "✓" -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
+        # Legend: DarkCyan = ✓ Checkmark (Enabled)
+        Write-Host "✓" -NoNewline -ForegroundColor DarkCyan
         Write-Host " " -NoNewline
     } else {
-        $color = switch ($Severity) {
-            "Critical" { "Red" }
-            "Warning" { "Yellow" }
-            "Info" { "Gray" }
-            default { "Yellow" }
-        }
-        Write-Host " ✗ " -NoNewline -ForegroundColor $color
+        # Legend: DarkRed = ✗ Cross Mark (Disabled)
+        Write-Host " ✗ " -NoNewline -ForegroundColor DarkRed
     }
 }
 
@@ -185,9 +182,11 @@ function Write-SectionHeader {
         [string]$Icon = "🛡️"
     )
     
+    # Legend: Cyan = Section Titles / @ (Icons)
     Write-Host "`n$Icon " -NoNewline -ForegroundColor Cyan
-    Write-Host $Title -ForegroundColor White
-    Write-Host ("─" * 40) -ForegroundColor DarkGray
+    Write-Host $Title -ForegroundColor Cyan
+    # Legend: DarkBlue = Section boundary lines (Updated to 50 chars)
+    Write-Host ("─" * 50) -ForegroundColor DarkBlue
 }
 
 function Get-ThirdPartyAntivirus {
@@ -300,16 +299,14 @@ function Get-DefenderStatus {
     
     # Show warning if Real-time Protection is off
     if (!$enabled) {
-        Write-Host "   ⚠️  " -NoNewline -ForegroundColor Red
-        Write-Host "WARNING: Several features below will not work without Real-time protection" -ForegroundColor Yellow
+        Write-Host "⚠️ - Several features require Real-time protection" -ForegroundColor Yellow
     }
     
     $enabled = !$preferences.DisableDevDriveScanning
     # Dev Drive requires Real-time Protection
     if (!$script:RealTimeProtectionEnabled -and $enabled) {
         Write-StatusIcon $false -Severity "Info"
-        Write-Host "Dev Drive protection " -NoNewline -ForegroundColor White
-        Write-Host "(inactive - requires Real-time protection)" -ForegroundColor DarkGray
+        Write-Host "Dev Drive protection" -ForegroundColor White
         Add-SecurityCheck -Category "Virus & Threat Protection" -Name "Dev Drive protection" -IsEnabled $false -Severity "Info" `
             -Remediation "First enable Real-time protection, then: Set-MpPreference -DisableDevDriveScanning `$false" `
             -Details "Scans developer drives for threats. REQUIRES Real-time protection to be enabled"
@@ -856,14 +853,13 @@ function Get-ScanInformation {
 
     # Check if all statuses are green
     $allGreen = ($quickScanColor -eq "Green") -and ($fullScanColor -eq "Green") -and ($lastUpdateColor -eq "Green")
+    
+    # Store status globally so Show-SecuritySummary can display the "None" line
+    $script:ScanStatusAllGreen = $allGreen
 
     # Display condensed format if all green, otherwise show details
     if ($allGreen) {
-        Write-Host "`n" -NoNewline
-        Write-StatusIcon -IsEnabled $true
-        Write-Host "Current threats: " -NoNewline -ForegroundColor White
-        # ANSI escape code for Light Blue (Bright Blue)
-        Write-Host "$([char]27)[94mNone$([char]27)[0m"
+        # Logic moved to Show-SecuritySummary to group with Enabled/Disabled counts
     } else {
         Write-SectionHeader "Current threats" "⚠️"
 
@@ -873,7 +869,8 @@ function Get-ScanInformation {
             Write-Host "$($quickScanTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor $quickScanColor
         } else {
             Write-Host "  Last quick scan:      " -NoNewline -ForegroundColor Gray
-            Write-Host "N/A" -ForegroundColor Red
+            # Legend: DarkGray = - Hyphen (Not Available)
+            Write-Host "-" -ForegroundColor DarkGray
         }
 
         # --- Last Full Scan ---
@@ -882,7 +879,8 @@ function Get-ScanInformation {
             Write-Host "$($fullScanTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor $fullScanColor
         } else {
             Write-Host "  Last full scan:       " -NoNewline -ForegroundColor Gray
-            Write-Host "N/A" -ForegroundColor Red
+            # Legend: DarkGray = - Hyphen (Not Available)
+            Write-Host "-" -ForegroundColor DarkGray
         }
 
         # --- Signature Version ---
@@ -895,7 +893,8 @@ function Get-ScanInformation {
             Write-Host "$($lastUpdatedTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor $lastUpdateColor
         } else {
             Write-Host "  Last updated:         " -NoNewline -ForegroundColor Gray
-            Write-Host "N/A" -ForegroundColor Red
+            # Legend: DarkGray = - Hyphen (Not Available)
+            Write-Host "-" -ForegroundColor DarkGray
         }
     }
 }
@@ -948,47 +947,37 @@ function Show-SecuritySummary {
     $scoreRating = if ($score -ge 90) { "EXCELLENT" } elseif ($score -ge 80) { "GOOD" } elseif ($score -ge 60) { "FAIR" } else { "POOR" }
     
     Write-Host "`n" -NoNewline
-    Write-Host ("═" * 40) -ForegroundColor Blue
+    # Legend: DarkBlue = Section boundary lines (Updated to 50 chars)
+    Write-Host ("═" * 50) -ForegroundColor DarkBlue
+    
+    # Added Title: SECURITY FEATURES (Using Cyan for Section Title)
+    Write-Host "  SECURITY FEATURES" -ForegroundColor Cyan
+    
     Write-Host "  " -NoNewline
-    Write-Host "✓" -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
-    Write-Host " " -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
+    # Legend: DarkCyan = ✓ Checkmark (Enabled)
+    Write-Host "✓" -NoNewline -ForegroundColor DarkCyan
     Write-Host " $enabled Enabled" -NoNewline -ForegroundColor Green
-    Write-Host "  ✗ $disabled Disabled" -NoNewline -ForegroundColor $(if ($disabled -gt 0) { "Yellow" } else { "Green" })
+    # Legend: DarkRed = ✗ Cross Mark (Disabled)
+    Write-Host "  ✗ $disabled Disabled" -NoNewline -ForegroundColor DarkRed
+    
+    # Moved "Current threats: None" here
+    if ($script:ScanStatusAllGreen -and $script:RealTimeProtectionEnabled) {
+        Write-Host "" # New line
+        Write-Host "  Current threats: " -NoNewline -ForegroundColor White
+        Write-Host "None" -ForegroundColor DarkCyan
+    }
+
     if ($critical -gt 0) {
         Write-Host "  ⚠ $critical Critical" -ForegroundColor Red
     } else {
         Write-Host ""
     }
-    Write-Host ("═" * 40) -ForegroundColor Blue
+    # Legend: DarkBlue = Section boundary lines (Updated to 50 chars)
+    Write-Host ("═" * 50) -ForegroundColor DarkBlue
     
-    # Show critical issues if any
-    if ($critical -gt 0) {
-        Write-Host "`n⚠️  CRITICAL ISSUES:" -ForegroundColor Red
-        $criticalChecks = $script:SecurityChecks | Where-Object { !$_.IsEnabled -and $_.Severity -eq "Critical" }
-        foreach ($check in $criticalChecks) {
-            Write-Host "   • $($check.Category): " -NoNewline -ForegroundColor Red
-            Write-Host "$($check.Name)" -ForegroundColor White
-        }
-    }
+    # REMOVED: Detailed CRITICAL ISSUES list (User requested conciseness)
     
-    # Special warning if Real-time Protection is disabled
-    if (!$script:RealTimeProtectionEnabled) {
-        Write-Host "`n🚨 REAL-TIME PROTECTION IS DISABLED" -ForegroundColor Red
-        Write-Host ("─" * 40) -ForegroundColor DarkGray
-        Write-Host "The following features are " -NoNewline -ForegroundColor Yellow
-        Write-Host "INACTIVE" -NoNewline -ForegroundColor Red
-        Write-Host " or " -NoNewline -ForegroundColor Yellow
-        Write-Host "LIMITED" -NoNewline -ForegroundColor Red
-        Write-Host " without Real-time Protection:" -ForegroundColor Yellow
-        Write-Host "   • Controlled Folder Access (ransomware protection)" -ForegroundColor DarkGray
-        # Note: Behavior Monitoring logic was removed from Get-DefenderStatus but is still referenced here for completeness
-        Write-Host "   • Behavior Monitoring" -ForegroundColor DarkGray 
-        Write-Host "   • Dev Drive Protection" -ForegroundColor DarkGray
-        Write-Host "   • Exploit Protection (Network protection)" -ForegroundColor DarkGray
-        Write-Host "   • Cloud-delivered Protection (limited effectiveness)" -ForegroundColor DarkGray
-        Write-Host ""
-        Write-Host "➜ Enable Real-time Protection first to activate these features" -ForegroundColor Cyan
-    }
+    # REMOVED: REAL-TIME PROTECTION warning block (User requested conciseness)
 }
 
 function Show-RemediationSteps {
@@ -1005,8 +994,10 @@ function Show-RemediationSteps {
         return
     }
     
-    Write-Host "`n🔧 REMEDIATION STEPS" -ForegroundColor Cyan
-    Write-Host ("─" * 40) -ForegroundColor DarkGray
+    # Legend: DarkGreen = Script Titles (Used here as major section)
+    Write-Host "`n🔧 REMEDIATION STEPS" -ForegroundColor DarkGreen
+    # Legend: DarkBlue = Section boundary lines (Updated to 50 chars)
+    Write-Host ("─" * 50) -ForegroundColor DarkBlue
     Write-Host "Run the following commands to enable disabled features:`n" -ForegroundColor Gray
     
     $criticalChecks = $disabledChecks | Where-Object { $_.Severity -eq "Critical" }
@@ -1342,7 +1333,8 @@ function Compare-ToBaseline {
     try {
         $baseline = Get-Content $BaselinePath | ConvertFrom-Json
         Write-Host "`n📊 BASELINE COMPARISON" -ForegroundColor Cyan
-        Write-Host ("─" * 40) -ForegroundColor DarkGray
+        # Legend: DarkBlue = Section boundary lines (Updated to 50 chars)
+        Write-Host ("─" * 50) -ForegroundColor DarkBlue
         Write-Host "Baseline from: " -NoNewline -ForegroundColor Gray
         Write-Host $baseline.Timestamp -ForegroundColor White
 
@@ -1397,7 +1389,10 @@ function Write-ApplySettingsMenu {
     )
 
     # Reset cursor to the top of the menu area
-    [Console]::SetCursorPosition(0, $menuTop)
+    # Wrapped in try/catch to prevent crash if console buffer is full
+    try {
+        [Console]::SetCursorPosition(0, $menuTop)
+    } catch { }
 
     # Define prefixes
     $prefix1 = "  [ ]"
@@ -1415,7 +1410,10 @@ function Write-ApplySettingsMenu {
     Write-Host "$prefix1 Yes - Apply recommended settings" -NoNewline -ForegroundColor White
     Write-Host $clearLine
 
-    [Console]::SetCursorPosition(0, $menuTop + 1)
+    try {
+        [Console]::SetCursorPosition(0, $menuTop + 1)
+    } catch { }
+
     Write-Host "$prefix2 No - Exit without applying settings" -NoNewline -ForegroundColor White
     Write-Host $clearLine
 }
@@ -1435,9 +1433,12 @@ function Invoke-ApplySecuritySettings {
     }
 
     Write-Host "`n" -NoNewline
-    Write-Host ("═" * 40) -ForegroundColor Blue
-    Write-Host "  APPLY RECOMMENDED SETTINGS" -ForegroundColor White
-    Write-Host ("═" * 40) -ForegroundColor Blue
+    # Legend: DarkBlue = Section boundary lines (Updated to 50 chars)
+    Write-Host ("═" * 50) -ForegroundColor DarkBlue
+    # Legend: Yellow = User Prompt >
+    Write-Host "  APPLY RECOMMENDED SETTINGS" -ForegroundColor Yellow
+    # Legend: DarkBlue = Section boundary lines (Updated to 50 chars)
+    Write-Host ("═" * 50) -ForegroundColor DarkBlue
     Write-Host "  Found " -NoNewline -ForegroundColor White
     Write-Host "$($disabledChecks.Count)" -NoNewline -ForegroundColor Yellow
     Write-Host " disabled security feature(s)" -ForegroundColor White
@@ -1482,15 +1483,15 @@ function Invoke-ApplySecuritySettings {
     if ($selectedOption -eq 0) {
         # User chose Yes - Apply settings
         Write-Host "`n  ✓ Applying recommended security settings..." -ForegroundColor Green
-        Write-Host ("─" * 40) -ForegroundColor DarkGray
+        Write-Host ("─" * 50) -ForegroundColor DarkBlue
 
         # This is where we'll add individual setting functions
         Apply-SecuritySettings
 
         Write-Host "`n" -NoNewline
-        Write-Host ("─" * 40) -ForegroundColor DarkGray
+        Write-Host ("─" * 50) -ForegroundColor DarkBlue
         Write-Host "  ✓ Settings applied successfully!" -ForegroundColor Green
-        Write-Host ("─" * 40) -ForegroundColor DarkGray
+        Write-Host ("─" * 50) -ForegroundColor DarkBlue
     } else {
         # User chose No - Exit
         Write-Host "`n  - Exiting without applying settings" -ForegroundColor Gray
@@ -1571,20 +1572,23 @@ function Enable-TamperProtection {
         }
 
         Write-Host " NEEDS MANUAL ENABLEMENT" -ForegroundColor Yellow
-        Write-Host "`n    Opening Windows Security..." -ForegroundColor Cyan
+        Write-Host "`nOpening Windows Security..." -ForegroundColor Cyan
 
         # Open Windows Security to Virus & threat protection settings
         Start-Process "windowsdefender://threatsettings" -ErrorAction Stop
 
         Start-Sleep -Seconds 2
 
-        Write-Host "`n    ℹ️  Tamper Protection must be enabled manually:" -ForegroundColor Cyan
-        Write-Host "      1. In the Windows Security window that opened:" -ForegroundColor White
-        Write-Host "      2. Scroll down to 'Tamper Protection'" -ForegroundColor White
-        Write-Host "      3. Toggle it ON" -ForegroundColor White
-        Write-Host "      4. Close Windows Security when done" -ForegroundColor White
-        Write-Host "`n    Press any key once you've enabled Tamper Protection..." -ForegroundColor Yellow
+        Write-Host "`nℹ️ Enable manually:" -ForegroundColor Cyan
+        Write-Host "1. In the opened window:" -ForegroundColor White
+        Write-Host "2. Find 'Tamper Protection'" -ForegroundColor White
+        Write-Host "3. Toggle it ON" -ForegroundColor White
+        Write-Host "4. Close window" -ForegroundColor White
+        
+        # Explicit prompt to wait for user action
+        Write-Host "`nPress key AFTER enabling..." -ForegroundColor Yellow
 
+        # Pause script until key press
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 
         # Verify if user enabled it
@@ -2407,6 +2411,81 @@ function Enable-SmartAppControl {
     }
 }
 
+function Enable-DynamicLock {
+    <#
+    .SYNOPSIS
+        Enables Dynamic Lock via registry
+    .DESCRIPTION
+        Sets the 'EnableGoodbye' registry key in HKCU.
+        Requires a paired Bluetooth device to function.
+    #>
+    param()
+
+    try {
+        Write-Host "`n  • Dynamic lock..." -ForegroundColor Cyan -NoNewline
+
+        $regPath = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon"
+        $regName = "EnableGoodbye"
+
+        # Check if path exists
+        if (-not (Test-Path $regPath)) {
+            New-Item -Path $regPath -Force | Out-Null
+        }
+
+        # Set EnableGoodbye to 1
+        Set-ItemProperty -Path $regPath -Name $regName -Value 1 -Type DWord -Force -ErrorAction Stop
+
+        Start-Sleep -Seconds 1
+
+        # Verify
+        $val = Get-ItemProperty -Path $regPath -Name $regName -ErrorAction SilentlyContinue
+        if ($val.$regName -eq 1) {
+            Write-Host " ENABLED" -ForegroundColor Green
+            Write-Host "    ℹ️  Ensure smartphone is paired via Bluetooth" -ForegroundColor Yellow
+            return $true
+        } else {
+            Write-Host " FAILED" -ForegroundColor Red
+            return $false
+        }
+    } catch {
+        Write-Host " ERROR" -ForegroundColor Red
+        Write-Host "    ⚠️  $($_.Exception.Message)" -ForegroundColor Yellow
+        return $false
+    }
+}
+
+function Enable-FirewallProfile {
+    <#
+    .SYNOPSIS
+        Enables a specific Windows Firewall profile
+    #>
+    param(
+        [string]$ProfileName
+    )
+
+    try {
+        Write-Host "`n  • $ProfileName network firewall..." -ForegroundColor Cyan -NoNewline
+
+        Set-NetFirewallProfile -Name $ProfileName -Enabled True -ErrorAction Stop
+        
+        Start-Sleep -Seconds 1
+        
+        # Verify
+        $profile = Get-NetFirewallProfile -Name $ProfileName -ErrorAction SilentlyContinue
+        if ($profile.Enabled) {
+             Write-Host " ENABLED" -ForegroundColor Green
+             return $true
+        } else {
+             Write-Host " FAILED" -ForegroundColor Red
+             return $false
+        }
+    } catch {
+        Write-Host " ERROR" -ForegroundColor Red
+        Write-Host "    ⚠️  $($_.Exception.Message)" -ForegroundColor Yellow
+        return $false
+    }
+}
+
 function Apply-SecuritySettings {
     <#
     .SYNOPSIS
@@ -2525,6 +2604,38 @@ function Apply-SecuritySettings {
                     $settingsFailed++
                 }
             }
+            
+            "Dynamic lock" {
+                if (Enable-DynamicLock) {
+                    $settingsApplied++
+                } else {
+                    $settingsFailed++
+                }
+            }
+
+            "Domain network firewall" {
+                if (Enable-FirewallProfile -ProfileName "Domain") {
+                    $settingsApplied++
+                } else {
+                    $settingsFailed++
+                }
+            }
+
+            "Private network firewall" {
+                if (Enable-FirewallProfile -ProfileName "Private") {
+                    $settingsApplied++
+                } else {
+                    $settingsFailed++
+                }
+            }
+
+            "Public network firewall" {
+                if (Enable-FirewallProfile -ProfileName "Public") {
+                    $settingsApplied++
+                } else {
+                    $settingsFailed++
+                }
+            }
 
             default {
                 # Setting not yet implemented
@@ -2551,8 +2662,11 @@ try {
     Clear-Host
     
     Write-Host "`n" -NoNewline
-    Write-Host "  WINDOWS SECURITY STATUS REPORT" -ForegroundColor Green
-    Write-Host ("═" * 40) -ForegroundColor Blue
+    # Legend: DarkGreen = Script Titles
+    # Removed spaces in front as requested
+    Write-Host "WINDOWS SECURITY STATUS REPORT" -ForegroundColor DarkGreen
+    # Legend: DarkBlue = Section boundary lines (Updated to 50 chars)
+    Write-Host ("═" * 50) -ForegroundColor DarkBlue
 
     # Run all security checks
     Get-DefenderStatus
@@ -2602,8 +2716,10 @@ try {
     
     # Additional Options Menu
     # Removed one newline as requested
-    Write-Host "  ADDITIONAL OPTIONS" -ForegroundColor Cyan
-    Write-Host ("═" * 40) -ForegroundColor Blue
+    # Legend: Yellow = User Prompt >
+    Write-Host "  ADDITIONAL OPTIONS" -ForegroundColor Yellow
+    # Legend: DarkBlue = Section boundary lines (Updated to 50 chars)
+    Write-Host ("═" * 50) -ForegroundColor DarkBlue
     Write-Host "  Press 'R' to Run a quick scan" -ForegroundColor White
     Write-Host "  Press Spacebar to Quit" -ForegroundColor White
 
@@ -2681,7 +2797,7 @@ try {
     # Handle Quit (Spacebar)
     elseif ($key.Character -eq ' ') {
         Write-Host "  Quitting..." -ForegroundColor Gray
-        exit
+        # exit command removed to keep window open
     }
     # Skip
     else {
@@ -2690,12 +2806,14 @@ try {
 
     # Footer
     Write-Host "`n" -NoNewline
-    Write-Host ("─" * 40) -ForegroundColor DarkGray
+    # Legend: DarkBlue = Section boundary lines (Updated to 50 chars)
+    Write-Host ("─" * 50) -ForegroundColor DarkBlue
     # Set the timestamp this script was last edited
-    $lastEditedTimestamp = "2025-11-18"
+    $lastEditedTimestamp = "2025-11-19"
     Write-Host "Last Edited: $lastEditedTimestamp" -NoNewline -ForegroundColor Gray
     Write-Host "    www.AIIT.support" -ForegroundColor Gray
-    Write-Host ("─" * 40) -ForegroundColor DarkGray
+    # Legend: DarkBlue = Section boundary lines (Updated to 50 chars)
+    Write-Host ("─" * 50) -ForegroundColor DarkBlue
 
 } catch {
     Write-Host "`n[ERROR] " -NoNewline -ForegroundColor Red
@@ -2703,5 +2821,5 @@ try {
     Write-Host "`nMake sure you're running this script as Administrator.`n" -ForegroundColor Yellow
     Write-Host "Additional error details:" -ForegroundColor Yellow
     Write-Host $_.ScriptStackTrace -ForegroundColor Gray
-}
     exit 1
+}
