@@ -9,7 +9,6 @@ $ErrorActionPreference = 'Stop'
   Performs comprehensive system optimization, diagnostics, and maintenance tasks including:
   - Disk optimization (Trim for SSDs, Defrag for HDDs)
   - Power settings optimization
-  - Startup app management
   - Visual effects adjustment
   - System file integrity checks
   - Advanced diagnostics and remediation
@@ -19,15 +18,16 @@ $ErrorActionPreference = 'Stop'
 .NOTES
   Requires Administrator privileges
   Some operations may require system restart
-  Creates detailed logs in C:\Windows\Temp\Maintenance_[timestamp].log
+  Creates detailed logs in C:\Windows\Temp\Maint_[YYMMDD].log
 .EXAMPLE
-  .\07-Finalize_Maintenance-Win11.ps1
+  .\Run_Maintenance-W11.ps1
   Runs full maintenance and optimization sequence
 #>
 
 # Global Variables
-$script:StartTime = Get-Date
-$script:LogPath = "C:\Windows\Temp\Maintenance_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+# $script:StartTime = Get-Date
+# Updated log path format: Maint_[YYMMDD] (Removed seconds/time)
+$script:LogPath = "C:\Windows\Temp\Maint_$(Get-Date -Format 'yyMMdd').log"
 $script:RestartRequired = $false
 $script:ErrorsFound = @()
 
@@ -57,18 +57,12 @@ function Write-StatusIcon {
     )
 
     if ($IsEnabled) {
-        Write-Host " " -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
-        Write-Host "✓" -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
-        Write-Host " " -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
+        # Legend: DarkCyan = ✓ Checkmark (Enabled)
+        Write-Host "✓" -NoNewline -ForegroundColor DarkCyan
         Write-Host " " -NoNewline
     } else {
-        $color = switch ($Severity) {
-            "Critical" { "Red" }
-            "Warning" { "Yellow" }
-            "Info" { "Gray" }
-            default { "Yellow" }
-        }
-        Write-Host " ✗ " -NoNewline -ForegroundColor $color
+        # Legend: DarkRed = ✗ Cross Mark (Disabled)
+        Write-Host " ✗ " -NoNewline -ForegroundColor DarkRed
     }
 }
 
@@ -81,9 +75,11 @@ function Write-SectionHeader {
         [string]$Icon = "⚙️"
     )
 
+    # Legend: Cyan = Section Titles / @ (Icons)
     Write-Host "`n$Icon " -NoNewline -ForegroundColor Cyan
-    Write-Host $Title -ForegroundColor White
-    Write-Host ("─" * 70) -ForegroundColor DarkGray
+    Write-Host $Title -ForegroundColor Cyan
+    # Legend: DarkBlue = Section boundary lines (50 chars)
+    Write-Host ("─" * 50) -ForegroundColor DarkBlue
     Write-Log -Message "Starting: $Title" -Level INFO
 }
 
@@ -194,63 +190,7 @@ function Set-PowerSettings {
     }
 }
 
-# --- 3. Startup Apps Management ---
-
-function Disable-StartupApps {
-    Write-SectionHeader "Startup Applications Management" "🚀"
-
-    try {
-        Write-Host "`n  Scanning startup applications..." -ForegroundColor Yellow
-
-        # Get startup apps from registry
-        $startupPaths = @(
-            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
-            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce",
-            "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
-            "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce"
-        )
-
-        $startupApps = @()
-        foreach ($path in $startupPaths) {
-            if (Test-Path $path) {
-                $apps = Get-ItemProperty -Path $path -ErrorAction SilentlyContinue
-                if ($apps) {
-                    $apps.PSObject.Properties | Where-Object { $_.Name -notlike "PS*" } | ForEach-Object {
-                        $startupApps += [PSCustomObject]@{
-                            Name = $_.Name
-                            Command = $_.Value
-                            Path = $path
-                        }
-                    }
-                }
-            }
-        }
-
-        if ($startupApps.Count -eq 0) {
-            Write-Host "`n  ℹ️  No startup applications found in registry" -ForegroundColor Cyan
-        } else {
-            Write-Host "`n  Found $($startupApps.Count) startup application(s):" -ForegroundColor Cyan
-            foreach ($app in $startupApps) {
-                Write-Host "    • $($app.Name)" -ForegroundColor Gray
-            }
-
-            Write-Host "`n  ⚠️  Manual Review Required:" -ForegroundColor Yellow
-            Write-Host "    Open Task Manager > Startup apps to disable non-essential applications" -ForegroundColor Gray
-            Write-Host "    This script has logged all found startup items for your review" -ForegroundColor Gray
-
-            Write-Log -Message "Found $($startupApps.Count) startup applications" -Level INFO
-            foreach ($app in $startupApps) {
-                Write-Log -Message "Startup App: $($app.Name) - $($app.Command)" -Level INFO
-            }
-        }
-
-    } catch {
-        Write-Host "  ✗ Error scanning startup apps: $($_.Exception.Message)" -ForegroundColor Red
-        Write-Log -Message "Startup apps scan error: $($_.Exception.Message)" -Level ERROR
-    }
-}
-
-# --- 4. Visual Effects Optimization ---
+# --- 3. Visual Effects Optimization ---
 
 function Optimize-VisualEffects {
     Write-SectionHeader "Visual Effects Optimization" "🎨"
@@ -286,7 +226,7 @@ function Optimize-VisualEffects {
     }
 }
 
-# --- 5. Advanced Diagnostics ---
+# --- 4. Advanced Diagnostics ---
 
 # NOTE: Start-DiskCheck is NOT called automatically in this script
 # It can be manually enabled if needed by uncommenting it in the main execution section
@@ -430,7 +370,7 @@ function Start-MemoryDiagnostics {
     }
 }
 
-# --- 6. Optional Cleanup ---
+# --- 5. Optional Cleanup ---
 
 function Invoke-SystemCleanup {
     Write-SectionHeader "System Cleanup" "🧹"
@@ -468,7 +408,7 @@ function Update-GroupPolicy {
     }
 }
 
-# --- 7. Final Administrative Tasks ---
+# --- 6. Final Administrative Tasks ---
 
 function Hide-AdminAccount {
     Write-SectionHeader "Administrative Account Configuration" "👤"
@@ -524,88 +464,84 @@ try {
     Write-Log -Message "=== Maintenance Script Started ===" -Level INFO
 
     # Header
-    Write-Host "`n╔════════════════════════════════════════════════════════════════════╗" -ForegroundColor Blue
-    Write-Host "║        " -NoNewline -ForegroundColor Blue
-    Write-Host "WINDOWS 11 FINALIZATION & MAINTENANCE" -NoNewline -ForegroundColor White
-    Write-Host "              ║" -ForegroundColor Blue
-    Write-Host "╚════════════════════════════════════════════════════════════════════╝" -ForegroundColor Blue
-
-    Write-Host "`n  Log file: $script:LogPath" -ForegroundColor Gray
-
-    # Prompt to create restore point before maintenance
     Write-Host "`n" -NoNewline
-    Write-Host ("─" * 70) -ForegroundColor DarkGray
-    $choice = Read-Host "Create a System Restore Point before maintenance? (Y/N)"
-    if ($choice -match '^[Yy]$') {
-        Write-Host "`n  Creating System Restore Point..." -ForegroundColor Yellow
-        Write-Log -Message "User requested restore point creation" -Level INFO
-        try {
-            # Enable System Protection if not already enabled
-            Enable-ComputerRestore -Drive "C:\" -ErrorAction SilentlyContinue
+    # Legend: DarkGreen = Script Titles
+    Write-Host "WINDOWS 11 FINALIZATION & MAINTENANCE" -ForegroundColor DarkGreen
+    # Legend: DarkBlue = Section boundary lines (50 chars)
+    Write-Host ("═" * 50) -ForegroundColor DarkBlue
 
-            # Create restore point
-            Checkpoint-Computer -Description "Before maintenance - $(Get-Date -Format 'yyyy-MM-dd HH:mm')" -RestorePointType "MODIFY_SETTINGS" -ErrorAction Stop
-            Write-Host "  ✓ Restore Point created successfully." -ForegroundColor Green
-            Write-Host "    Description: Before maintenance - $(Get-Date -Format 'yyyy-MM-dd HH:mm')" -ForegroundColor Gray
-            Write-Log -Message "Restore point created successfully" -Level SUCCESS
-        } catch {
-            Write-Host "  ✗ Restore Point creation failed: $($_.Exception.Message)" -ForegroundColor Red
-            Write-Host "    Note: Ensure System Protection is enabled on drive C:\" -ForegroundColor Yellow
-            Write-Log -Message "Restore point creation failed: $($_.Exception.Message)" -Level ERROR
-            $continue = Read-Host "`nContinue with maintenance anyway? (Y/N)"
-            if ($continue -notmatch '^[Yy]$') {
-                Write-Host "`n  Maintenance canceled by user." -ForegroundColor Yellow
-                Write-Log -Message "Maintenance canceled by user after restore point failure" -Level WARNING
-                exit 0
-            }
-        }
+    # --- Task Selection Menu ---
+    Write-Host "`n" -NoNewline
+    # Legend: DarkBlue = Section boundary lines (50 chars)
+    Write-Host ("─" * 50) -ForegroundColor DarkBlue
+    # Legend: Cyan = Section Titles
+    Write-Host "  MAINTENANCE TASK SELECTION" -ForegroundColor Cyan
+    Write-Host ("─" * 50) -ForegroundColor DarkBlue
+    
+    $tasks = @(
+        @{ ID=1; Name="Disk Optimization"; Function="Optimize-Disks" },
+        @{ ID=2; Name="Power Settings Optimization"; Function="Set-PowerSettings" },
+        @{ ID=3; Name="Visual Effects Optimization"; Function="Optimize-VisualEffects" },
+        @{ ID=4; Name="System Integrity & Diagnostics"; Function="Run-Diagnostics" },
+        @{ ID=5; Name="System Cleanup"; Function="Invoke-SystemCleanup" },
+        @{ ID=6; Name="Group Policy Update"; Function="Update-GroupPolicy" },
+        @{ ID=7; Name="Hide Administrative Accounts"; Function="Hide-AdminAccount" },
+        @{ ID=8; Name="Create Restore Point"; Function="New-FinalRestorePoint" }
+    )
+
+    foreach ($t in $tasks) {
+        Write-Host "  [$($t.ID)] $($t.Name)" -ForegroundColor White
+    }
+    Write-Host "  [A] Run All Tasks" -ForegroundColor Green
+    Write-Host "  [Q] Quit" -ForegroundColor Red
+    
+    $selection = Read-Host "`nSelect tasks (1,3,5) or 'A' for All: "
+    
+    if ($selection -match "^[Qq]") { exit }
+    
+    $selectedIDs = @()
+    if ($selection -match "^[Aa]") {
+        $selectedIDs = $tasks.ID
     } else {
-        Write-Host "  Skipping restore point creation." -ForegroundColor Gray
-        Write-Log -Message "User declined restore point creation" -Level INFO
+        $selectedIDs = $selection -split "," | ForEach-Object { $_.Trim() }
     }
-
-    # Execute maintenance tasks
-    Optimize-Disks
-    Set-PowerSettings
-    Disable-StartupApps
-    Optimize-VisualEffects
-
-    # Advanced Diagnostics and Remediation Sequence:
-    # 1. Check System Files (Primary): sfc /scannow
-    # 2. IF sfc finds issues: Re-run sfc /scannow
-    # 3. IF sfc reports unfixable errors: DISM /Online /Cleanup-Image /RestoreHealth
-    # 4. IF DISM reports issues: mdsched.exe (Windows Memory Diagnostic)
-    # NOTE: chkdsk /f is NOT run automatically as it requires a restart
-
-    $sfcResult = Test-SystemFiles
-    if (-not $sfcResult) {
-        $dismResult = Repair-WindowsImage
-        if (-not $dismResult) {
-            Start-MemoryDiagnostics
+    
+    # Execute selected tasks
+    foreach ($id in $selectedIDs) {
+        switch ($id) {
+            1 { Optimize-Disks }
+            2 { Set-PowerSettings }
+            3 { Optimize-VisualEffects }
+            4 { 
+                # Diagnostics sequence
+                $sfcResult = Test-SystemFiles
+                if (-not $sfcResult) {
+                    $dismResult = Repair-WindowsImage
+                    if (-not $dismResult) {
+                        Start-MemoryDiagnostics
+                    }
+                }
+            }
+            5 { Invoke-SystemCleanup }
+            6 { Update-GroupPolicy }
+            7 { Hide-AdminAccount }
+            8 { New-FinalRestorePoint }
         }
     }
-
-    # Optional cleanup
-    Invoke-SystemCleanup
-    Update-GroupPolicy
-
-    # Final tasks
-    Hide-AdminAccount
-    New-FinalRestorePoint
 
     # Summary
-    $elapsed = ((Get-Date) - $script:StartTime).TotalSeconds
+    # $elapsed = ((Get-Date) - $script:StartTime).TotalSeconds
 
     Write-Host "`n" -NoNewline
-    Write-Host ("═" * 70) -ForegroundColor Blue
-    Write-Host "  📊 MAINTENANCE SUMMARY" -ForegroundColor White
-    Write-Host ("═" * 70) -ForegroundColor Blue
+    # Legend: DarkBlue = Section boundary lines (50 chars)
+    Write-Host ("═" * 50) -ForegroundColor DarkBlue
+    Write-Host "  MAINTENANCE SUMMARY" -ForegroundColor White
+    Write-Host ("═" * 50) -ForegroundColor DarkBlue
 
-    Write-Host "`n  ⏱️  Total time: " -NoNewline -ForegroundColor Gray
-    Write-Host "$([math]::Round($elapsed, 2)) seconds" -ForegroundColor White
+    # Write-Host "`n  ⏱️  Total time: " -NoNewline -ForegroundColor Gray
+    # Write-Host "$([math]::Round($elapsed, 2)) seconds" -ForegroundColor White
 
-    Write-Host "`n  📋 Log file: " -NoNewline -ForegroundColor Gray
-    Write-Host "$script:LogPath" -ForegroundColor White
+    Write-Host "`n📋  $script:LogPath" -ForegroundColor White
 
     if ($script:ErrorsFound.Count -gt 0) {
         Write-Host "`n  ⚠️  Issues found:" -ForegroundColor Yellow
@@ -625,11 +561,12 @@ try {
     }
 
     Write-Host "`n" -NoNewline
-    Write-Host ("─" * 70) -ForegroundColor DarkGray
+    # Legend: DarkBlue = Section boundary lines (50 chars)
+    Write-Host ("─" * 50) -ForegroundColor DarkBlue
     Write-Host "  Maintenance completed: " -NoNewline -ForegroundColor Gray
     Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor White
     Write-Host "  www.AIIT.support all rights reserved" -ForegroundColor Green
-    Write-Host ("─" * 70) -ForegroundColor DarkGray
+    Write-Host ("─" * 50) -ForegroundColor DarkBlue
     Write-Host ""
 
     Write-Log -Message "=== Maintenance Script Completed ===" -Level INFO
