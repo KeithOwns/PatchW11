@@ -159,9 +159,7 @@ function Write-StatusIcon {
     )
     
     if ($IsEnabled) {
-        Write-Host " " -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
         Write-Host "✓" -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
-        Write-Host " " -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
         Write-Host " " -NoNewline
     } else {
         $color = switch ($Severity) {
@@ -189,7 +187,7 @@ function Write-SectionHeader {
     
     Write-Host "`n$Icon " -NoNewline -ForegroundColor Cyan
     Write-Host $Title -ForegroundColor White
-    Write-Host ("─" * 60) -ForegroundColor DarkGray
+    Write-Host ("─" * 40) -ForegroundColor DarkGray
 }
 
 function Get-ThirdPartyAntivirus {
@@ -245,7 +243,7 @@ function Get-DefenderStatus {
     #>
     param()
 
-    Write-SectionHeader "Virus & threat protection settings" "⚙️"
+    Write-SectionHeader "Virus & threat protection" "🛡️"
     # Check for third-party antivirus software
     $avInfo = Get-ThirdPartyAntivirus
 
@@ -435,7 +433,7 @@ function Get-FirewallStatus {
     #>
     param()
     
-    Write-SectionHeader "Firewall & network protection" "📶"
+    Write-SectionHeader "Firewall & network protection" "📡"
     # Build a dictionary of active networks to display next to their profile status
     $activeNetworks = @{}
     try {
@@ -471,7 +469,7 @@ function Get-FirewallStatus {
             $networkName = $activeNetworks[$Name]
             $suffix = ""
             if ($networkName) {
-                $suffix = " (Active Network: $networkName)"
+                $suffix = " ($networkName)"
             }
 
             Write-StatusIcon $enabled -Severity "Critical"
@@ -503,7 +501,7 @@ function Get-ReputationProtection {
     #>
     param()
 
-    Write-SectionHeader "Reputation-based protection" "✅"
+    Write-SectionHeader "Reputation-based protection" "🌐"
     # Get MpPreference only if not using third-party AV
     $preferences = $null
     if ($script:RealTimeProtectionEnabled) {
@@ -738,7 +736,7 @@ function Get-CoreIsolationStatus {
     #>
     param()
     
-    Write-SectionHeader "Core isolation" "🔲"
+    Write-SectionHeader "Core isolation" "🔒"
     # Get MpPreference only if not using third-party AV
     $preferences = $null
     if ($script:RealTimeProtectionEnabled) {
@@ -763,8 +761,8 @@ function Get-CoreIsolationStatus {
     $kernelStackProt = Get-RegValue -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\KernelShadowStacks" -Name "Enabled" -DefaultValue 0
     $enabled = $kernelStackProt -ge 1
     Write-StatusIcon $enabled -Severity "Info"
-    Write-Host "Kernel-mode Hardware-enforced Stack Protection" -ForegroundColor White
-    Add-SecurityCheck -Category "Device Security" -Name "Kernel-mode Hardware-enforced Stack Protection" -IsEnabled $enabled -Severity "Info" `
+    Write-Host "Kernel-mode Hardware-enforced Stack" -ForegroundColor White
+    Add-SecurityCheck -Category "Device Security" -Name "Kernel-mode Hardware-enforced Stack" -IsEnabled $enabled -Severity "Info" `
         -Remediation "Requires compatible CPU and Windows 11 22H2+" `
         -Details "Hardware-based kernel stack protection"
 
@@ -861,10 +859,11 @@ function Get-ScanInformation {
 
     # Display condensed format if all green, otherwise show details
     if ($allGreen) {
-        Write-Host "`n " -NoNewline
-        Write-Host "✓" -NoNewline -ForegroundColor Black -BackgroundColor Cyan
-        Write-Host "  Current threats: " -NoNewline -ForegroundColor White
-        Write-Host "None" -ForegroundColor Cyan
+        Write-Host "`n" -NoNewline
+        Write-StatusIcon -IsEnabled $true
+        Write-Host "Current threats: " -NoNewline -ForegroundColor White
+        # ANSI escape code for Light Blue (Bright Blue)
+        Write-Host "$([char]27)[94mNone$([char]27)[0m"
     } else {
         Write-SectionHeader "Current threats" "⚠️"
 
@@ -949,9 +948,8 @@ function Show-SecuritySummary {
     $scoreRating = if ($score -ge 90) { "EXCELLENT" } elseif ($score -ge 80) { "GOOD" } elseif ($score -ge 60) { "FAIR" } else { "POOR" }
     
     Write-Host "`n" -NoNewline
-    Write-Host ("═" * 60) -ForegroundColor Blue
+    Write-Host ("═" * 40) -ForegroundColor Blue
     Write-Host "  " -NoNewline
-    Write-Host " " -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
     Write-Host "✓" -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
     Write-Host " " -NoNewline -BackgroundColor DarkCyan -ForegroundColor Black
     Write-Host " $enabled Enabled" -NoNewline -ForegroundColor Green
@@ -961,7 +959,7 @@ function Show-SecuritySummary {
     } else {
         Write-Host ""
     }
-    Write-Host ("═" * 60) -ForegroundColor Blue
+    Write-Host ("═" * 40) -ForegroundColor Blue
     
     # Show critical issues if any
     if ($critical -gt 0) {
@@ -976,7 +974,7 @@ function Show-SecuritySummary {
     # Special warning if Real-time Protection is disabled
     if (!$script:RealTimeProtectionEnabled) {
         Write-Host "`n🚨 REAL-TIME PROTECTION IS DISABLED" -ForegroundColor Red
-        Write-Host ("─" * 60) -ForegroundColor DarkGray
+        Write-Host ("─" * 40) -ForegroundColor DarkGray
         Write-Host "The following features are " -NoNewline -ForegroundColor Yellow
         Write-Host "INACTIVE" -NoNewline -ForegroundColor Red
         Write-Host " or " -NoNewline -ForegroundColor Yellow
@@ -1008,7 +1006,7 @@ function Show-RemediationSteps {
     }
     
     Write-Host "`n🔧 REMEDIATION STEPS" -ForegroundColor Cyan
-    Write-Host ("─" * 60) -ForegroundColor DarkGray
+    Write-Host ("─" * 40) -ForegroundColor DarkGray
     Write-Host "Run the following commands to enable disabled features:`n" -ForegroundColor Gray
     
     $criticalChecks = $disabledChecks | Where-Object { $_.Severity -eq "Critical" }
@@ -1344,7 +1342,7 @@ function Compare-ToBaseline {
     try {
         $baseline = Get-Content $BaselinePath | ConvertFrom-Json
         Write-Host "`n📊 BASELINE COMPARISON" -ForegroundColor Cyan
-        Write-Host ("─" * 60) -ForegroundColor DarkGray
+        Write-Host ("─" * 40) -ForegroundColor DarkGray
         Write-Host "Baseline from: " -NoNewline -ForegroundColor Gray
         Write-Host $baseline.Timestamp -ForegroundColor White
 
@@ -1437,9 +1435,9 @@ function Invoke-ApplySecuritySettings {
     }
 
     Write-Host "`n" -NoNewline
-    Write-Host ("═" * 60) -ForegroundColor Blue
+    Write-Host ("═" * 40) -ForegroundColor Blue
     Write-Host "  APPLY RECOMMENDED SETTINGS" -ForegroundColor White
-    Write-Host ("═" * 60) -ForegroundColor Blue
+    Write-Host ("═" * 40) -ForegroundColor Blue
     Write-Host "  Found " -NoNewline -ForegroundColor White
     Write-Host "$($disabledChecks.Count)" -NoNewline -ForegroundColor Yellow
     Write-Host " disabled security feature(s)" -ForegroundColor White
@@ -1484,15 +1482,15 @@ function Invoke-ApplySecuritySettings {
     if ($selectedOption -eq 0) {
         # User chose Yes - Apply settings
         Write-Host "`n  ✓ Applying recommended security settings..." -ForegroundColor Green
-        Write-Host ("─" * 60) -ForegroundColor DarkGray
+        Write-Host ("─" * 40) -ForegroundColor DarkGray
 
         # This is where we'll add individual setting functions
         Apply-SecuritySettings
 
         Write-Host "`n" -NoNewline
-        Write-Host ("─" * 60) -ForegroundColor DarkGray
+        Write-Host ("─" * 40) -ForegroundColor DarkGray
         Write-Host "  ✓ Settings applied successfully!" -ForegroundColor Green
-        Write-Host ("─" * 60) -ForegroundColor DarkGray
+        Write-Host ("─" * 40) -ForegroundColor DarkGray
     } else {
         # User chose No - Exit
         Write-Host "`n  - Exiting without applying settings" -ForegroundColor Gray
@@ -2204,7 +2202,7 @@ function Enable-KernelStackProtection {
     param()
 
     try {
-        Write-Host "`n  • Kernel-mode Hardware-enforced Stack Protection..." -ForegroundColor Cyan -NoNewline
+        Write-Host "`n  • Kernel-mode Hardware-enforced Stack..." -ForegroundColor Cyan -NoNewline
 
         # --- From 'Enable_KernelStackProtection.ps1' ---
         $registryPath = "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\KernelShadowStacks"
@@ -2258,7 +2256,6 @@ function Enable-KernelStackProtection {
             if ($enabledValue -eq 1 -and $wasEnabledByValue -eq 2) {
                 Write-Host " ENABLED" -ForegroundColor Green
                 Write-Host "    ⚠️  RESTART REQUIRED for changes to take effect" -ForegroundColor Yellow
-                Write-Host "    ℹ️  Requires CPU with Intel CET or AMD Shadow Stack support" -ForegroundColor Cyan
                 return $true
             } else {
                 Write-Host " FAILED" -ForegroundColor Red
@@ -2513,7 +2510,7 @@ function Apply-SecuritySettings {
                 }
             }
 
-            "Kernel-mode Hardware-enforced Stack Protection" {
+            "Kernel-mode Hardware-enforced Stack" {
                 if (Enable-KernelStackProtection) {
                     $settingsApplied++
                 } else {
@@ -2555,7 +2552,7 @@ try {
     
     Write-Host "`n" -NoNewline
     Write-Host "  WINDOWS SECURITY STATUS REPORT" -ForegroundColor Green
-    Write-Host ("═" * 60) -ForegroundColor Blue
+    Write-Host ("═" * 40) -ForegroundColor Blue
 
     # Run all security checks
     Get-DefenderStatus
@@ -2604,10 +2601,11 @@ try {
     }
     
     # Additional Options Menu
-    Write-Host "`n"
+    # Removed one newline as requested
     Write-Host "  ADDITIONAL OPTIONS" -ForegroundColor Cyan
-    Write-Host ("═" * 60) -ForegroundColor Blue
+    Write-Host ("═" * 40) -ForegroundColor Blue
     Write-Host "  Press 'R' to Run a quick scan" -ForegroundColor White
+    Write-Host "  Press Spacebar to Quit" -ForegroundColor White
 
     $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     Write-Host ""
@@ -2680,6 +2678,11 @@ try {
             Write-Host "  ⚠️  Could not start quick scan: $($_.Exception.Message)" -ForegroundColor Yellow
         }
     }
+    # Handle Quit (Spacebar)
+    elseif ($key.Character -eq ' ') {
+        Write-Host "  Quitting..." -ForegroundColor Gray
+        exit
+    }
     # Skip
     else {
         Write-Host "  No additional options selected" -ForegroundColor Gray
@@ -2687,12 +2690,12 @@ try {
 
     # Footer
     Write-Host "`n" -NoNewline
-    Write-Host ("─" * 60) -ForegroundColor DarkGray
+    Write-Host ("─" * 40) -ForegroundColor DarkGray
     # Set the timestamp this script was last edited
     $lastEditedTimestamp = "2025-11-18"
-    Write-Host "  Last Edited: $lastEditedTimestamp" -NoNewline -ForegroundColor Gray
-    Write-Host "     www.AIIT.support" -ForegroundColor Gray
-    Write-Host ("─" * 60) -ForegroundColor DarkGray
+    Write-Host "Last Edited: $lastEditedTimestamp" -NoNewline -ForegroundColor Gray
+    Write-Host "    www.AIIT.support" -ForegroundColor Gray
+    Write-Host ("─" * 40) -ForegroundColor DarkGray
 
 } catch {
     Write-Host "`n[ERROR] " -NoNewline -ForegroundColor Red
@@ -2700,5 +2703,5 @@ try {
     Write-Host "`nMake sure you're running this script as Administrator.`n" -ForegroundColor Yellow
     Write-Host "Additional error details:" -ForegroundColor Yellow
     Write-Host $_.ScriptStackTrace -ForegroundColor Gray
-    exit 1
 }
+    exit 1
