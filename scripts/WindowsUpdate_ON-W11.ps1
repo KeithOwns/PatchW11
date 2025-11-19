@@ -271,7 +271,7 @@ function Invoke-MSStoreUpdateCheck {
         Write-Host "    Please manually click 'Get updates' in the Microsoft Store" -ForegroundColor Gray
     }
 
-    Write-Host "`n  ℹ️  Microsoft Store is open - verify updates are checking/installing" -ForegroundColor Cyan
+    Write-Host "`n  ℹ️  Verify updates are checking/installing" -ForegroundColor Cyan
 }
 
 function Invoke-WinUpdateCheck {
@@ -318,7 +318,7 @@ function Invoke-WinUpdateCheck {
             return
         }
         
-        Write-Host "  • Found Settings window. Looking for 'Check for updates' button..." -ForegroundColor Gray
+        Write-Host "  • Looking for 'Check for updates' button..." -ForegroundColor Gray
         
         # Wait a bit more for the page to fully load
         Start-Sleep -Seconds 2
