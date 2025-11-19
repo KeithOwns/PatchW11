@@ -74,7 +74,7 @@ function Show-WUStatus {
     Write-Host "`n  --- More options ---" -ForegroundColor Cyan
     $continuous = Get-RegistryValue -Path $WU_UX -Name "IsContinuousInnovationOptedIn"
     Write-StatusIcon ($continuous -eq 1) -Severity "Warning"
-    Write-Host "Get the latest updates as soon as they're available" -ForegroundColor White
+    Write-Host "Get latest updates..." -ForegroundColor White
 
     Write-Host "`n  --- Advanced options ---" -ForegroundColor Cyan
     $mu = Get-RegistryValue -Path $WU_UX  -Name "AllowMUUpdateService"
@@ -124,8 +124,7 @@ function Show-WUStatus {
         Write-Host "   " -NoNewline
         Write-Host "Policy enforces Microsoft Update: $pol_mu" -ForegroundColor Gray
     } else { 
-        Write-Host "   " -NoNewline
-        Write-Host "No policy enforcement detected for Microsoft Update" -ForegroundColor Gray
+        Write-Host "No policy enforcement detected" -ForegroundColor Gray
     }
 }
 
@@ -194,7 +193,7 @@ function Invoke-MSStoreUpdateCheck {
         return
     }
 
-    Write-Host "`n  Opening Microsoft Store to check for app updates..." -ForegroundColor Yellow
+    Write-Host "`nOpening Microsoft Store to check for app updates" -ForegroundColor Yellow
     Write-Host "  • Launching Microsoft Store..." -ForegroundColor Gray
 
     # Open MS Store to Downloads and Updates page
@@ -225,10 +224,10 @@ function Invoke-MSStoreUpdateCheck {
             return
         }
         
-        Write-Host "  • Found Microsoft Store window. Looking for 'Get updates' button..." -ForegroundColor Gray
+        Write-Host "  • Looking for 'Get updates' button..." -ForegroundColor Gray
         
         # Wait a bit more for the page to fully load
-        Start-Sleep -Seconds 2
+        Start-Sleep -Seconds 5 # Increased from 3 to 5 for more reliability
         
         # Search for the "Get updates" button
         $buttonTexts = @("Get updates", "Check for updates", "Update all")
@@ -362,7 +361,7 @@ function Invoke-WinUpdateCheck {
         Write-Host "    Please manually check for updates." -ForegroundColor Gray
     }
 
-    Write-Host "`n  ℹ️  Settings is open - verify updates are checking." -ForegroundColor Cyan
+    Write-Host "`n  ℹ️  Verify updates are checking." -ForegroundColor Cyan
 }
 
 # --- Main ---
