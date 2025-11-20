@@ -10,9 +10,13 @@ Write-Host "--------------------------------------------------" -ForegroundColor
 Write-Host "`n`n`n"
 
 # Legend mappings
-# Boundary lines are exactly 50 characters long
+# FORMATTING RULES:
+# - Maximum window width: 50 characters
+# - Never split words between lines
+# - Favor conciseness: use abbreviations or ellipses (...)
+# - Boundary lines are exactly 50 characters long
 
-Write-Host "DarkBlue    = " `
+Write-Host "DarkBlue    =  " `
     -NoNewline -ForegroundColor DarkBlue
 Write-Host "—" `
     -NoNewline -ForegroundColor Black -BackgroundColor DarkBlue
@@ -25,7 +29,7 @@ Write-Host "(`"─`" * 50) -Fg DarkBlue" `
 Write-Host ""
 Write-Host ""
 
-Write-Host "Cyan        = " `
+Write-Host "Cyan        =  " `
     -NoNewline -ForegroundColor Cyan
 Write-Host "✓" `
     -NoNewline -ForegroundColor Black -BackgroundColor Cyan
@@ -38,7 +42,7 @@ Write-Host " -IsEnabled `$true" `
 Write-Host ""
 Write-Host ""
 
-Write-Host "DarkRed     = " `
+Write-Host "DarkRed     =  " `
     -NoNewline -ForegroundColor DarkRed
 Write-Host "✗" `
     -NoNewline -ForegroundColor Black -BackgroundColor DarkRed
@@ -51,7 +55,7 @@ Write-Host " -IsEnabled `$false" `
 Write-Host ""
 Write-Host ""
 
-Write-Host "Red         = " `
+Write-Host "Red         =  " `
     -NoNewline -ForegroundColor Red
 Write-Host "🚫" `
     -NoNewline -ForegroundColor Black -BackgroundColor Red
@@ -68,7 +72,7 @@ Write-Host " ERROR`" -Fg Red" `
 Write-Host ""
 Write-Host ""
 
-Write-Host "Yellow      = " `
+Write-Host "Yellow      =  " `
     -NoNewline -ForegroundColor Yellow
 Write-Host "!" `
     -NoNewline -ForegroundColor Black -BackgroundColor Yellow
@@ -81,20 +85,20 @@ Write-Host "`"Message`" -Fg Yellow" `
 Write-Host ""
 Write-Host ""
 
-Write-Host "DarkYellow  = " `
+Write-Host "DarkYellow  =  " `
     -NoNewline -ForegroundColor DarkYellow
-Write-Host " ⚠ " `
+Write-Host "⚠ " `
     -NoNewline -ForegroundColor Black -BackgroundColor DarkYellow
 Write-Host " (Warning Sign) Warnings" `
     -ForegroundColor DarkYellow
 Write-Host "Use: Write-Host " `
     -NoNewline -ForegroundColor Gray
-Write-Host "`" ⚠  WARNING`" -Fg DarkYellow" `
+Write-Host "`"⚠ WARNING`" -Fg DarkYellow" `
     -ForegroundColor Gray
 Write-Host ""
 Write-Host ""
 
-Write-Host "White       = " `
+Write-Host "White       =  " `
     -NoNewline -ForegroundColor White
 Write-Host ([char]0x2699) `
     -NoNewline -ForegroundColor White
@@ -107,7 +111,7 @@ Write-Host "`"`$Icon `$Title`" -Fg White" `
 Write-Host ""
 Write-Host ""
 
-Write-Host "Gray        = " `
+Write-Host "Gray        =  " `
     -NoNewline -ForegroundColor Gray
 Write-Host "i" `
     -NoNewline -ForegroundColor Black -BackgroundColor Gray
@@ -120,7 +124,7 @@ Write-Host "`"  • Detail...`" -Fg Gray" `
 Write-Host ""
 Write-Host ""
 
-Write-Host "DarkGray    = - Hyphen (unavailable)" `
+Write-Host "DarkGray    = - (Hyphen) unavailable" `
     -ForegroundColor DarkGray
 Write-Host "Use: Write-Host " `
     -NoNewline -ForegroundColor Gray
@@ -129,7 +133,7 @@ Write-Host "`"  -`" -Fg DarkGray" `
 Write-Host ""
 Write-Host ""
 
-Write-Host "Green       = " `
+Write-Host "Green       =  " `
     -NoNewline -ForegroundColor Green
 Write-Host "✅" `
     -NoNewline -ForegroundColor White -BackgroundColor Green
@@ -142,12 +146,21 @@ Write-Host "`"✅ Complete.`" -Fg Green" `
 Write-Host ""
 Write-Host ""
 
-Write-Host "DarkGreen   = [scriptTITLE]" `
+Write-Host "DarkGreen   =  [scriptTITLE] -- PatchW11" `
     -ForegroundColor DarkGreen
 Write-Host "Use: Write-Host " `
     -NoNewline -ForegroundColor Gray
 Write-Host "`"TITLE`" -Fg DarkGreen" `
     -ForegroundColor Gray
+
+# Formatting rules output
+Write-Host ""
+Write-Host ""
+Write-Host "FORMATTING RULES:" -ForegroundColor White
+Write-Host "  • Max width: 50 characters" -ForegroundColor Gray
+Write-Host "  • Never split words between lines" -ForegroundColor Gray
+Write-Host "  • Use abbreviations or ellipses (...)" -ForegroundColor Gray
+Write-Host "  • Boundary lines: exactly 50 chars" -ForegroundColor Gray
 
 # 5 empty lines at the bottom
 Write-Host "`n`n`n`n`n"
