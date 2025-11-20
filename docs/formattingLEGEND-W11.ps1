@@ -1,5 +1,5 @@
 # Set console output encoding to UTF-8 to ensure all Unicode and Emoji
-# characters display correctly in the PowerShell console.
+# characters display correctly on the PowerShell console.
 Clear-Host
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -9,6 +9,8 @@ $Reset = "`e[0m"
 # Specific sequences for background/foreground
 $BGB = "`e[40m`e[97m" # Black BG, White FG (B)
 $BGW = "`e[47m`e[30m" # White BG, Black FG (W)
+# New variable for Dark Blue Background (REMOVED, now using $BGB or BlackSpace)
+$BGDarkBlue = "`e[44m`e[97m" # Dark Blue BG, White FG
 # Dark blue foreground
 $FGDarkBlue = "`e[34m"
 
@@ -27,15 +29,20 @@ $SymbolData = @(
 # Define 8-character width for the Symbol column
 $SymbolColumnWidth = 8
 
-# New white background line for 8 spaces
-$WhiteBackgroundLine8 = "`e[47m`e[30m" + (" " * $SymbolColumnWidth) + $Reset
+# NEW: Separator pattern {B B B B D W W W} -> {B B B B B W W W}
+$SeparatorPattern = (
+    $BGB + " " + $BGB + " " + $BGB + " " + $BGB + " " + # B B B B
+    $BGB + " " +                                        # D -> B
+    $BGW + " " + $BGW + " " + $BGW + " "                # W W W
+) + $Reset
+
 # Empty line below (8 spaces) - REMOVED "|"
 $EmptyLine8NoPipe = (" " * $SymbolColumnWidth)
 
 # 1. Print Header (adjusting for 8-char width)
 Write-Output " Unicode | Symbol"
 
-# NEW: Add line of 50 dark blue Em Dashes ("—")
+# NEW: Add line of 50 dark blue Em Dashes ("—") - FGDarkBlue remains
 Write-Output "$FGDarkBlue$((('—') * 50))$Reset"
 
 # 3. Loop through data and print manually formatted strings
@@ -46,35 +53,43 @@ for ($i = 0; $i -lt $SymbolData.Count; $i++) {
     $UnicodeColumn = $Data.Unicode.PadLeft(7)
     
     # Swapped order: Secondary symbol (B BG) then Primary symbol (W BG)
-    $Symbol1 = $BGB + $Data.Symbol + " " # Symbol 1 is Secondary (2 chars wide)
-    $Symbol2 = $BGW + $Data.Symbol + " " # Symbol 2 is Primary (2 chars wide)
+    $Symbol1_Char = $BGB + $Data.Symbol  # Symbol 1 is Secondary (1 char wide)
+    $Symbol2_Char = $BGW + $Data.Symbol  # Symbol 2 is Primary (1 char wide)
+    
+    # DarkBlueSeparator is now BlackSpace (B)
+    $DarkBlueSeparator = $BGB + " " 
+    $BlackSpace = $BGB + " " # Black space (B), 1 char wide
+    $WhiteSpace = $BGW + " " # New White space (W), 1 char wide
 
-    # --- Print White Separator ABOVE the data row ---
-    Write-Output "         | $WhiteBackgroundLine8"
+    # --- Print Separator Pattern ABOVE the data row ---
+    Write-Output "         | $SeparatorPattern"
 
     # --- Formatting for Rows 0 and 1 (U+1F5F8 and U+2713) ---
     if ($i -le 1) {
         
-        # Both U+1F5F8 (Index 0) and U+2713 (Index 1) use the {WBBBWWWB} pattern and SWAPPED symbols.
-        $SymbolColumnContent = (
-            $BGW + " " +       # 1. W (Space)
-            $BGB + " " +       # 2. B (Space)
-            $BGB + $Data.Symbol + # 3. B (Symbol 1) - Inverted
-            $BGB + " " +       # 4. B (Space)
-            $BGW + " " +       # 5. W (Space)
-            $BGW + $Data.Symbol + # 6. W (Symbol 2) - Primary
-            $BGW + " " +       # 7. W (Space)
-            $BGB + " "        # 8. B (Space)
-        )
+        # Custom logic for U+1F5F8 (Index 0) and U+2713 (Index 1) - SHIFT FIRST SYMBOL RIGHT
+        if ($i -le 1) {
+            # New Structure: [B s] [B s] [B S1] [B s] [B s] [W s] [W S2] [W s] (8 colored chars)
+             $SymbolColumnContent = (
+                $BGB + " " +          # 1. B (Space) - Empty
+                $BGB + " " +          # 2. B (Space) - Empty (Shifted from pos 2)
+                $BGB + $Data.Symbol + # 3. B (Symbol 1) - Inverted (Now in pos 3)
+                $BlackSpace +         # 4. Black Space (B)
+                $DarkBlueSeparator +  # 5. DARK BLUE SEPARATOR (Now B)
+                $WhiteSpace +         # 6. NEW: White Space (W)
+                $BGW + $Data.Symbol + # 7. W (Symbol 2) - Primary
+                $BGW + " "            # 8. W (Space)
+            )
+        }
         
         # Total colored width is 8. No padding needed.
         $SymbolColumnOutput = $SymbolColumnContent + $Reset
         
         # Output the data row (SWAPPED ORDER: Unicode then Symbol)
-        Write-Output " $UnicodeColumn | $SymbolColumnOutput"
+        Write-Output " $UnicodeColumn ${FGDarkBlue}|${Reset} $SymbolColumnOutput"
         
-        # Print the white line BELOW (8 spaces)
-        Write-Output "         | $WhiteBackgroundLine8"
+        # Print the Separator Pattern BELOW (8 spaces)
+        Write-Output "         | $SeparatorPattern"
         
         # Print the empty line below
         Write-Output " $EmptyLine8NoPipe" 
@@ -82,71 +97,82 @@ for ($i = 0; $i -lt $SymbolData.Count; $i++) {
     } else {
         # --- Custom 8-char formatting for U+2714, U+1F5F9, U+2611, U+2705 (Indices 2, 3, 4, 5) ---
         
-        # General content pattern for rows 2, 3: [s] [$$] [s] [s] [$$] [s] (6 colored chars)
+        # Default content pattern for rows 2, 3: [s B] [S1 B] [s B] [NEW B s] [B s] [W s] [S2 W] [s W] (8 colored chars)
         $SymbolColumnContent = (
-            $BGB + " " +         # 1. s (B)
-            $Symbol1 +           # 2. $$ (2 chars wide) - Swapped symbol order (B BG)
-            ($BGB + " ") +      # 3. s (B) - Default: space after Symbol1
-            $BGW + " " +         # 4. s (W)
-            $Symbol2 +           # 5. $$ (2 chars wide)
-            $BGW + " "          # 6. s (W)
+            $BGB + " " +          # 1. s (B)
+            $BGB + $Data.Symbol + # 2. S1 (B)
+            ($BGB + " ") +        # 3. s (B) - Padding space for S1
+            $BlackSpace +         # 4. Black Space (B)
+            $DarkBlueSeparator +  # 5. DARK BLUE SEPARATOR (Now B)
+            $WhiteSpace +         # 6. NEW: White Space (W)
+            $BGW + $Data.Symbol + # 7. S2 (W)
+            $BGW + " "            # 8. s (W)
         )
-        
-        # Custom logic for U+2611 (Index 4) - 7-char pattern {WWWWBBB}
-        if ($i -eq 4) {
-             $SymbolColumnContent = (
-                # 1. W (Space) - Prepend
-                $BGW + " " +
-                # 2. W (Primary Symbol)
-                $BGW + $Data.Symbol +
-                # 3. W (Space) - First space after symbol
-                $BGW + " " +
-                # 4. W (Space) - Second space after symbol
-                $BGW + " " +
-                # 5. B (Space)
-                $BGB + " " +
-                # 6. B (Secondary Symbol)
-                $BGB + $Data.Symbol +
-                # 7. B (Space)
-                $BGB + " "
+
+        # Custom logic for U+1F5F9 (Index 3) - APPLY SHIFT
+        if ($i -eq 3) {
+            # New Structure: [B s] [B s] [B S1] [B s] [B s] [W s] [W S2] [W s] (8 colored chars)
+            $SymbolColumnContent = (
+                $BGB + " " +          # 1. B (Space) - Empty
+                $BGB + " " +          # 2. B (Space) - Empty (Shifted from pos 2)
+                $BGB + $Data.Symbol + # 3. B (Symbol 1) - Inverted (Now in pos 3)
+                $BlackSpace +         # 4. Black Space (B)
+                $DarkBlueSeparator +  # 5. DARK BLUE SEPARATOR (Now B)
+                $WhiteSpace +         # 6. NEW: White Space (W)
+                $BGW + $Data.Symbol + # 7. W (Symbol 2) - Primary
+                $BGW + " "            # 8. W (Space)
             )
-            # Row 4 content is now 7 colored characters. Needs 1 reset space.
-            $Padding = " "
+        }
+        
+        # Custom logic for U+2611 (Index 4) - Pattern {B W W B B B B B} (8 colored chars) - NOT SWAPPED
+        if ($i -eq 4) {
+            $SymbolColumnContent = (
+                $BGB + " " +                 # 1. B (Space)
+                ($BGW + $Data.Symbol) +      # 2. W (S1 - Primary Symbol)
+                $BGW + " " +                 # 3. W (Space)
+                $BGB + " " +                 # 4. B (Space)
+                $DarkBlueSeparator +         # 5. D -> B (Black Separator)
+                $BGB + " " +                 # 6. B (Space)
+                ($BGB + $Data.Symbol) +      # 7. B (S2 - Secondary Symbol)
+                $BGB + " "                   # 8. B (Space)
+            )
+            # Row 4 content is 8 colored characters. Needs 0 reset space.
+            $Padding = ""
         }
         
         # Custom logic for U+2705 (Index 5) - Trimmed padding
         if ($i -eq 5) {
-            # Symbol 1 (First Checkmark) uses BGB (Black BG)
-            # Symbol 2 (Second Checkmark) uses BGW (White BG)
-            # The pattern is: [s B] [$$ B] [s W] [$$ W] [s W] (6 colored chars)
+            # Pattern: [s B] [S1 B] [B s] [B s] [W s] [S2 W] [s W] (7 colored chars)
             $SymbolColumnContent = (
-                $BGB + " " +         # 1. s (B)
-                $Symbol1 +           # 2. $$ (2 chars wide) - Black BG
-                $BGW + " " +         # 3. s (W)
-                
-                # CHANGED: Symbol 2 (check mark) with White BG
-                ($BGW + $Data.Symbol) + 
-                # NEW: Space after second checkmark with White BG
-                ($BGW + " ") 
+                $BGB + " " +          # 1. s (B)
+                $BGB + $Data.Symbol + # 2. S1 (B)
+                $BlackSpace +         # 3. Black Space (B)
+                $DarkBlueSeparator +  # 4. DARK BLUE SEPARATOR (Now B)
+                $WhiteSpace +         # 5. NEW: White Space (W)
+                ($BGW + $Data.Symbol) + # 6. S2 (W) - White BG
+                ($BGW + " ")          # 7. s (W) - Trailing space
             )
-            # Row 5 content is 6 colored characters. Needs 2 reset spaces.
-            $Padding = "  "
-        }
-        
-        # Determine Padding (to make total width 8)
-        $Padding = "  " # Default for Rows 2, 3, 5 (6 colored chars + 2 reset spaces = 8)
-        if ($i -eq 4) {
-            # Row 4 (U+2611) now has 7 colored characters. Needs 1 reset space.
+            # Row 5 content is 7 colored characters. Needs 1 reset space.
             $Padding = " "
         }
         
+        # Determine Padding (to make total width 8)
+        $Padding = "" # Default for Rows 2, 3 (8 colored chars + 0 reset spaces = 8)
+        
+        # Override if custom padding is needed
+        if ($i -eq 4) { $Padding = "" }
+        if ($i -eq 5) { $Padding = " " } # 7 colored chars + 1 reset space = 8
+        
+        # If row 3 used the custom shift logic, it needs 0 padding (it's 8 chars wide)
+        if ($i -eq 3) { $Padding = "" }
+
         $SymbolColumnOutput = $SymbolColumnContent + $Reset + $Padding
         
         # Output the data row (SWAPPED ORDER: Unicode then Symbol)
-        Write-Output " $UnicodeColumn | $SymbolColumnOutput"
+        Write-Output " $UnicodeColumn ${FGDarkBlue}|${Reset} $SymbolColumnOutput"
         
-        # Print the white line BELOW (8 spaces)
-        Write-Output "         | $WhiteBackgroundLine8"
+        # Print the Separator Pattern BELOW (8 spaces)
+        Write-Output "         | $SeparatorPattern"
         
         # 3. Print the empty line below
         Write-Output " $EmptyLine8NoPipe" 
