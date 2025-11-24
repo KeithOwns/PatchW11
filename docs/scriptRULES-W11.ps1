@@ -57,7 +57,7 @@ $FGBlue = "$Esc[34m"
 $FGCyan = "$Esc[36m"
 $FGGreen = "$Esc[32m"
 $FGYellow = "$Esc[93m"  # Bright Yellow
-$FGDarkYellow = "$Esc[33m"  # Dark Yellow
+$FGDarkYellow = "$Esc[33m"  # DkYellow
 $FGRed = "$Esc[91m"  # Bright Red
 $FGDarkRed = "$Esc[31m"  # Dark Red
 $FGWhite = "$Esc[97m"  # White
@@ -114,7 +114,7 @@ function Show-VisualExamples {
     Write-Output "${FGYellow}Yellow   = ${Char_Bell}User Prompts | Write-Host `"Message`" -Fg Yellow$Reset"
     
     # DkYellow
-    Write-Output "${FGDarkYellow}DarkYellow = $Char_Warn Warning | Write-Host `"⚠ WARNING`" -Fg DarkYellow$Reset"
+    Write-Output "${FGDarkYellow}DkYellow = $Char_Warn Warning | Write-Host `"⚠ WARNING`" -Fg DarkYellow$Reset"
     
     # White
     Write-Output "$Esc[40m${FGWhite}White    = ${Char_Gear} Icons/Titles | Write-Host `"⚙️ Title`" -Fg White$Reset"
