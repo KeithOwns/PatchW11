@@ -123,7 +123,7 @@ function Show-VisualExamples {
     Write-Output "$Esc[40m${FGGray}Gray     = ${Char_Info} Info/Details | Write-Host `"• Detail`" -Fg Gray$Reset"
     
     # DkGray
-    Write-Output "$Esc[40m${FGDarkGray}DarkGray = ${FGDarkGray}${Char_Square}Disabled | Write-Host `"${Char_Square}Disabled`" -Fg DarkGray$Reset"
+    Write-Output "$Esc[40m${FGDarkGray}DarkGray = $Esc[100m$Esc[97m${Char_Square}$Esc[40m${FGDarkGray}Disabled | Write-Host `"${Char_Square}Disabled`" -Fg DarkGray$Reset"
     
     # Green
     Write-Output "${FGGreen}Green    = ${Char_WhiteCheck}Success | Write-Host `"✅ Complete`" -Fg Green$Reset"
