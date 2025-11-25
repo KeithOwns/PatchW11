@@ -373,18 +373,29 @@ Write-Host ("═" * 50) -ForegroundColor DarkBlue
 Set-WUSettings
 Show-WUStatus
 
-# --- Microsoft Store Updates ---
-# This now runs in the same process, loading UIAutomation assemblies.
-Invoke-MSStoreUpdateCheck
+# --- User Prompt ---
+Write-Host "`nNext Steps:" -ForegroundColor Cyan
+Write-Host "  [Enter] Run Update Checks (Store & Windows)" -ForegroundColor Green
+Write-Host "  [Space] Skip" -ForegroundColor Yellow
 
-# --- Windows Update Check ---
-Invoke-WinUpdateCheck
+do {
+    $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+} while ($key.VirtualKeyCode -ne 13 -and $key.Character -ne ' ')
+
+if ($key.VirtualKeyCode -eq 13) { # 13 is Enter
+    # --- Microsoft Store Updates ---
+    Invoke-MSStoreUpdateCheck
+
+    # --- Windows Update Check ---
+    Invoke-WinUpdateCheck
+} else {
+    Write-Host "`nSkipping update checks." -ForegroundColor Gray
+}
 
 # Footer
 Write-Host "`n" -NoNewline
 Write-Host ("─" * 50) -ForegroundColor DarkBlue
-# Set the timestamp this script was last edited
-$lastEditedTimestamp = "2025-11-19"
+$lastEditedTimestamp = "2025-11-25"
 Write-Host "Last Edited: $lastEditedTimestamp" -NoNewline -ForegroundColor Gray
 Write-Host "    www.AIIT.support" -ForegroundColor Gray
 Write-Host ("─" * 50) -ForegroundColor DarkBlue
