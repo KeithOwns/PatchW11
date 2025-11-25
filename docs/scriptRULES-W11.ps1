@@ -45,7 +45,7 @@ $Char_XSquare     = [char]0x274E
 $Char_NoEntry     = [char]::ConvertFromUtf32(0x1F6AB)
 $Char_Bell        = [char]::ConvertFromUtf32(0x1F514)
 $Char_Gear        = [char]0x2699
-$Char_Square      = [char]::ConvertFromUtf32(0x1F533)
+$Char_Square      = [char]0x2B1B
 $Char_WhiteCheck  = [char]0x2705
 $Char_Loop        = [char]::ConvertFromUtf32(0x1F504)
 
@@ -54,20 +54,24 @@ $Esc = [char]0x1B
 $Reset = "$Esc[0m"
 $Bold = "$Esc[1m"
 $FGBlue = "$Esc[34m"
-$FGCyan = "$Esc[36m"
-$FGGreen = "$Esc[32m"
+$FGCyan = "$Esc[96m"  # Bright Cyan
+$FGDarkCyan = "$Esc[36m"  # Dark Cyan
+$FGGreen = "$Esc[92m" # Bright Green
+$FGDarkGreen = "$Esc[32m"  # Dark Green
 $FGYellow = "$Esc[93m"  # Bright Yellow
-$FGDarkYellow = "$Esc[33m"  # DkYellow
+$FGDarkYellow = "$Esc[33m"  # Dark Yellow
 $FGRed = "$Esc[91m"  # Bright Red
 $FGDarkRed = "$Esc[31m"  # Dark Red
 $FGWhite = "$Esc[97m"  # White
 $FGGray = "$Esc[37m"  # Gray
 $FGDarkGray = "$Esc[90m"  # Dark Gray
+$FGBlack = "$Esc[30m"  # Black
 $BGB = "$Esc[40m$Esc[97m"  # Black BG, White FG
 $BGW = "$Esc[47m$Esc[30m"  # White BG, Black FG
 $BGTeal = "$Esc[46m$Esc[30m"  # Teal/Cyan BG, Black FG
 $TealBG = "$Esc[40m$Esc[36m"  # Black BG, Teal/Cyan FG
 $BGModernGray = "$Esc[100m"  # Bright Black BG
+$BGDarkGray = "$Esc[100m$Esc[30m"  # DarkGray BG, Black FG
 
 # --- Separator Line Character ---
 $SeparatorChar = "$Char_HBar"  # U+2501 Box Drawings Heavy Horizontal
@@ -78,64 +82,68 @@ $SeparatorLine = "$FGBlue" + ($SeparatorChar * 60) + "$Reset"
 # ============================================================================
 function Show-VisualExamples {
     Write-Output ""
-    $Title = "SCRIPT WRITING RULES"
+    $Title = "-- SCRIPT WRITING RULES --"
     $TitlePadding = [Math]::Floor((60 - $Title.Length) / 2)
     
     # Construct visual blocks using variables
     $Block_TealBar = "$BGTeal  $Char_VBar  $Reset"
     $Block_TealBarTitle = "$BGTeal__${Char_VBar}__$Reset"  # __|__
-    $Block_TealBarSpacer = "$BGTeal__${Char_VBar}__  $Reset" # __|__
+    $Block_TealBarSpacer = "$BGTeal__${Char_VBar}__  $Reset" # __|__  
 
     $CenteredTitle = (" " * $TitlePadding) + $Title
-    Write-Output ("$Block_TealBar" + (" " * $TitlePadding) + "$Bold${FGCyan}$Title$Reset")
-    Write-Output ("$Block_TealBar" + (" " * $TitlePadding) + "$Bold${FGCyan}Patch-W11 $Char_Loop$Reset")
+    Write-Output ("$Block_TealBar" + (" " * ($TitlePadding - 5)) + "$Bold${FGCyan}$Title$Reset")
+    Write-Output ("$Block_TealBar" + (" " * ($TitlePadding + 3)) + "$Bold${FGWhite}Patch-W11 $Char_Loop$Reset")
     # Fix: Convert char to string before multiplication
     Write-Output ("$FGBlue" + ("$Char_HBar" * 60) + "$Reset")
     Write-Output ""
 
     # Color Usage Guide Section (Compact)
-    Write-Output "$Bold${FGCyan}Color Usage Guide:$Reset"
+    Write-Output "$Bold${FGCyan} - COLOR USAGE GUIDE -$Reset"
     Write-Output ""
-    Write-Output "${Bold}${FGCyan}Cyan     = $Char_Loop HEADER ${FGWhite}| Write-Host `"[HEADER]`" -Fg Cyan$Reset"
-    
-    # DkBlue
 
-
-    
-    # DarkCyan
-    Write-Output "${FGCyan}DarkCyan = ${TealBG}$Char_BallotCheck$Esc[40m${FGCyan} Enabled ${FGGray}| Write-StatusIcon -IsEnabled `$true$Reset"
-
-    # DkRed
-    Write-Output "${FGDarkRed}DarkRed  = ${Char_XSquare}Failure ${FGGray}| Write-StatusIcon -IsEnabled `$false$Reset"
-
-    # Red
-    Write-Output "${FGRed}Red      = ${Char_NoEntry}Errors ${FGGray}| Write-Host `"🚫 ERROR`" -Fg Red$Reset"
-
-    # Yellow
-    Write-Output "${FGYellow}Yellow   = ${Char_Bell}User Prompts ${FGGray}| Write-Host `"Message`" -Fg Yellow$Reset"
-
-    # DkYellow
-    Write-Output "${FGDarkYellow}DkYellow = $Char_Warn Warning ${FGGray}| Write-Host `"⚠ WARNING`" -Fg DarkYellow$Reset"
+    # Cyan
+    Write-Output "${FGCyan}Cyan       =  --HEADER-- ${FGGray}| Write-Host `"[Header]`" -Fg Cyan$Reset"
 
     # White
-    Write-Output "$Esc[40m${FGWhite}White    = ${Char_Gear} Icons/Titles ${FGGray}| Write-Host `"⚙️ Title`" -Fg White$Reset"
+    Write-Output "$Esc[40m${FGWhite}White      = ${Char_Gear}  Icon     ${FGGray}| Write-Host `"[Icon]`" -Fg White$Reset"
 
     # Gray
-    Write-Output "$Esc[40m${FGGray}Gray     = ${Char_Info} Info/Details | Write-Host `"${Char_Info} Detail`" -Fg Gray$Reset"
+    Write-Output "$Esc[40m${FGGray}Gray       = ${Char_Info}  Info     ${FGGray}| Write-Host `"${Char_Info} []`" -Fg Gray$Reset"
 
     # DkGray
-    Write-Output "$Esc[40m${FGDarkGray}DarkGray = $Esc[40m${FGDarkGray}☐ Disabled ${FGGray}| Write-Host `"☐ Disabled`" -Fg DarkGray$Reset"
+    Write-Output "$Esc[40m${FGDarkGray}DarkGray   = ${BGDarkGray}${Char_Square} Disabled ${Reset}${FGGray}| Write-Host `"${BGDarkGray}${Char_Square}OFF${Reset}`" -Bg DarkGray$Reset"
+
+    # DarkCyan
+    Write-Output "${FGDarkCyan}DarkCyan   = ${Char_BallotCheck}  Enabled  ${FGGray}| Write-Host `"${Char_BallotCheck}  ON`" -Bg DarkCyan$Reset"
+
+    # DarkYellow
+    Write-Output "${FGDarkYellow}DarkYellow = $Char_Warn  Warning  ${FGGray}| Write-Host `"⚠ []`" -Fg DarkYellow$Reset"
+
+    # Yellow
+    Write-Output "${FGYellow}Yellow     = ${Char_Bell} Alert ${Char_Bell} ${FGGray}| Write-Host `"${Char_Bell}[]${Char_Bell}`" -Fg Yellow$Reset"
+
+    # DarkRed
+    Write-Output "${FGDarkRed}DarkRed    = ${Char_XSquare} Failure  ${FGGray}| Write-Host `"${Char_XSquare}[]`" -Fg DarkRed$Reset"
+
+    # Red
+    Write-Output "${FGRed}Red        = ${Char_NoEntry} Error    ${FGGray}| Write-Host `"${Char_NoEntry}[]`" -Fg Red$Reset"
 
     # Green
-    Write-Output "${FGGreen}Green    = ${Char_WhiteCheck}Success ${FGGray}| Write-Host `"✅ Complete`" -Fg Green$Reset"
-    
+    Write-Output "${FGGreen}Green      = ${Char_WhiteCheck} Success  ${FGGray}| Write-Host `"✅[]`" -Fg Green$Reset"
+
+    # DarkGreen
+    Write-Output "${FGDarkGreen}DarkGreen  = [Number]    ${FGGray}| Write-Host `"[[#]]`" -Fg DarkGreen$Reset"
+
+    # DarkBlue
+    Write-Output "${FGBlue}DarkBlue   = ${Char_HBar}${Char_HBar} Lines    ${FGGray}| Write-Host (`"${Char_HBar}`"*60) -Fg DarkBlue$Reset"
+
     Write-Output ""
     # Fix: Convert char to string before multiplication
-    Write-Output ("$Char_HBar" * 60)
+    Write-Output ("$FGBlue" + ("$Char_HBar" * 60) + "$Reset")
     Write-Output ""
 
     # Additional information section
-    Write-Output "$Bold${FGCyan}Key Scripting Rules:$Reset"
+    Write-Output "$Bold${FGCyan}KEY SCRIPTING RULES:$Reset"
     Write-Output ""
     Write-Output "${FGGreen}[1.1]$Reset Use '$Char_HBar' (U+2501) for horizontal separator lines"
     Write-Output "      `$SeparatorChar = `"$Char_HBar`""
@@ -146,9 +154,9 @@ function Show-VisualExamples {
     Write-Output "${FGGreen}[3.1]$Reset Script naming: [Verb]_[SettingName]-W11.ps1"
     Write-Output "      Example: Enable_RealTimeProtection-W11.ps1"
     Write-Output ""
-    Write-Output ("$Char_HBar" * 60)
+    Write-Output ("$FGBlue" + ("$Char_HBar" * 60) + "$Reset")
     Write-Output ""
-    Write-Output "${FGCyan}View complete rules: ${FGYellow}.\scriptRULES-W11.ps1 -ShowRules$Reset"
+    Write-Output "${FGYellow}$Char_Bell View complete rules: ${FGGray}.\scriptRULES-W11.ps1${FGYellow} -ShowRules$Reset"
     Write-Output ""
 }
 
