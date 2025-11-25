@@ -98,65 +98,52 @@ function Show-VisualExamples {
     Write-Output ""
 
     # Color Usage Guide Section (Compact)
-    Write-Output "$Bold${FGCyan} - COLOR USAGE GUIDE -$Reset"
+    $GuideTitle = "- COLOR USAGE GUIDE -"
+    $GuidePadding = [Math]::Floor((60 - $GuideTitle.Length) / 2)
+    Write-Output (" " * $GuidePadding + "$Bold${FGCyan}$GuideTitle$Reset")
     Write-Output ""
 
     # Cyan
-    Write-Output "${FGCyan}Cyan       =  --HEADER-- ${FGGray}| Write-Host `"[Header]`" -Fg Cyan$Reset"
+    Write-Output " ${FGCyan}Cyan       =  --HEADER-- ${FGGray}| Write-Host `"[Header]`" -Fg Cyan$Reset"
 
     # White
-    Write-Output "$Esc[40m${FGWhite}White      = ${Char_Gear}  Icon     ${FGGray}| Write-Host `"[Icon]`" -Fg White$Reset"
+    Write-Output " $Esc[40m${FGWhite}White      = ${Char_Gear}  Icon     ${FGGray}| Write-Host `"[Icon]`" -Fg White$Reset"
 
     # Gray
-    Write-Output "$Esc[40m${FGGray}Gray       = ${Char_Info}  Info     ${FGGray}| Write-Host `"${Char_Info} []`" -Fg Gray$Reset"
+    Write-Output " $Esc[40m${FGGray}Gray       = ${Char_Info}  Info     ${FGGray}| Write-Host `"${Char_Info} []`" -Fg Gray$Reset"
 
     # DkGray
-    Write-Output "$Esc[40m${FGDarkGray}DarkGray   = ${BGDarkGray}${Char_Square} Disabled ${Reset}${FGGray}| Write-Host `"${BGDarkGray}${Char_Square}OFF${Reset}`" -Bg DarkGray$Reset"
+    Write-Output " $Esc[40m${FGDarkGray}DarkGray   = ${BGDarkGray}${Char_Square} Disabled ${Reset}${FGGray}| Write-Host `"${BGDarkGray}${Char_Square}OFF${Reset}`" -Bg DarkGray$Reset"
 
     # DarkCyan
-    Write-Output "${FGDarkCyan}DarkCyan   = ${Char_BallotCheck}  Enabled  ${FGGray}| Write-Host `"${Char_BallotCheck}  ON`" -Bg DarkCyan$Reset"
+    Write-Output " ${FGDarkCyan}DarkCyan   = ${Char_BallotCheck}  Enabled  ${FGGray}| Write-Host `"${Char_BallotCheck}  ON`" -Bg DarkCyan$Reset"
 
     # DarkYellow
-    Write-Output "${FGDarkYellow}DarkYellow = $Char_Warn  Warning  ${FGGray}| Write-Host `"⚠ []`" -Fg DarkYellow$Reset"
+    Write-Output " ${FGDarkYellow}DarkYellow = $Char_Warn  Warning  ${FGGray}| Write-Host `"⚠ []`" -Fg DarkYellow$Reset"
 
     # Yellow
-    Write-Output "${FGYellow}Yellow     = ${Char_Bell} Alert ${Char_Bell} ${FGGray}| Write-Host `"${Char_Bell}[]${Char_Bell}`" -Fg Yellow$Reset"
+    Write-Output " ${FGYellow}Yellow     = ${Char_Bell} Alert ${Char_Bell} ${FGGray}| Write-Host `"${Char_Bell}[]${Char_Bell}`" -Fg Yellow$Reset"
 
     # DarkRed
-    Write-Output "${FGDarkRed}DarkRed    = ${Char_XSquare} Failure  ${FGGray}| Write-Host `"${Char_XSquare}[]`" -Fg DarkRed$Reset"
+    Write-Output " ${FGDarkRed}DarkRed    = ${Char_XSquare} Failure  ${FGGray}| Write-Host `"${Char_XSquare}[]`" -Fg DarkRed$Reset"
 
     # Red
-    Write-Output "${FGRed}Red        = ${Char_NoEntry} Error    ${FGGray}| Write-Host `"${Char_NoEntry}[]`" -Fg Red$Reset"
+    Write-Output " ${FGRed}Red        = ${Char_NoEntry} Error    ${FGGray}| Write-Host `"${Char_NoEntry}[]`" -Fg Red$Reset"
 
     # Green
-    Write-Output "${FGGreen}Green      = ${Char_WhiteCheck} Success  ${FGGray}| Write-Host `"✅[]`" -Fg Green$Reset"
+    Write-Output " ${FGGreen}Green      = ${Char_WhiteCheck} Success  ${FGGray}| Write-Host `"✅[]`" -Fg Green$Reset"
 
     # DarkGreen
-    Write-Output "${FGDarkGreen}DarkGreen  = [Number]    ${FGGray}| Write-Host `"[[#]]`" -Fg DarkGreen$Reset"
+    Write-Output " ${FGDarkGreen}DarkGreen  = [Number]    ${FGGray}| Write-Host `"[[#]]`" -Fg DarkGreen$Reset"
 
     # DarkBlue
-    Write-Output "${FGBlue}DarkBlue   = ${Char_HBar}${Char_HBar} Lines    ${FGGray}| Write-Host (`"${Char_HBar}`"*60) -Fg DarkBlue$Reset"
+    Write-Output " ${FGBlue}DarkBlue   = ${Char_HBar}${Char_HBar} Lines    ${FGGray}| Write-Host (`"${Char_HBar}`"*60) -Fg DarkBlue$Reset"
 
     Write-Output ""
     # Fix: Convert char to string before multiplication
     Write-Output ("$FGBlue" + ("$Char_HBar" * 60) + "$Reset")
     Write-Output ""
-
-    # Additional information section
-    Write-Output "$Bold${FGCyan}KEY SCRIPTING RULES:$Reset"
-    Write-Output ""
-    Write-Output "${FGGreen}[1.1]$Reset Use '$Char_HBar' (U+2501) for horizontal separator lines"
-    Write-Output "      `$SeparatorChar = `"$Char_HBar`""
-    Write-Output "${FGGreen}[1.2]$Reset Use '$Char_VBar' (U+2502) for vertical separator lines"
-    Write-Output "${FGGreen}[1.3]$Reset All .ps1 files MUST be UTF-8 encoded"
-    Write-Output "      [Console]::OutputEncoding = [Text.Encoding]::UTF8"
-    Write-Output "${FGGreen}[2.1]$Reset Include #Requires -RunAsAdministrator at top"
-    Write-Output "${FGGreen}[3.1]$Reset Script naming: [Verb]_[SettingName]-W11.ps1"
-    Write-Output "      Example: Enable_RealTimeProtection-W11.ps1"
-    Write-Output ""
-    Write-Output ("$FGBlue" + ("$Char_HBar" * 60) + "$Reset")
-    Write-Output ""
-    Write-Output "${FGYellow}$Char_Bell View complete rules: ${FGGray}.\scriptRULES-W11.ps1${FGYellow} -ShowRules$Reset"
+    Write-Output "${FGYellow}${Char_Bell} View complete rules:  ${FGGray}.\scriptRULES-W11.ps1${FGYellow} -ShowRules ${Char_Bell}$Reset"
     Write-Output ""
 }
 
@@ -231,6 +218,20 @@ function Show-FullRules {
         -Description "Use Write-StatusIcon() and Write-SectionHeader() for consistent visual output." `
         -Example "Write-StatusIcon -Enabled `$true -Message `"Feature enabled`" -Severity `"Success`"" `
         -Rationale "Maintains consistent color-coded severity indicators and formatting across all scripts."
+
+    Write-RuleItem `
+        -RuleNumber "1.4" `
+        -Title "Semantic Color Coding" `
+        -Description "Adhere to the strict color guide: Cyan=Headers, DarkBlue=Lines, Yellow=Alerts, Red=Errors, Green=Success." `
+        -Example "Write-Host '[HEADER]' -Fg Cyan" `
+        -Rationale "Ensures immediate visual recognition of message types across all scripts."
+
+    Write-RuleItem `
+        -RuleNumber "1.5" `
+        -Title "Standard Icon Usage" `
+        -Description "Use defined icons: Gear (White), Info (Gray), Bell (Yellow), Check (Green), Cross (Red)." `
+        -Example "`$Char_Gear for operations, `$Char_Bell for alerts." `
+        -Rationale "Provides consistent visual cues for script status and attention levels."
 
     # ========================================================================
     # SCRIPT STRUCTURE & METADATA
