@@ -102,31 +102,31 @@ function Show-VisualExamples {
 
     
     # Cyan
-    Write-Output "${FGCyan}Cyan     = ${TealBG}$Char_BallotCheck$Esc[40m${FGCyan} Enabled | Write-StatusIcon -IsEnabled `$true$Reset"
-    
+    Write-Output "${FGCyan}Cyan     = ${TealBG}$Char_BallotCheck$Esc[40m${FGCyan} Enabled ${FGGray}| Write-StatusIcon -IsEnabled `$true$Reset"
+
     # DkRed
-    Write-Output "${FGDarkRed}DarkRed  = ${Char_XSquare}Failure | Write-StatusIcon -IsEnabled `$false$Reset"
-    
+    Write-Output "${FGDarkRed}DarkRed  = ${Char_XSquare}Failure ${FGGray}| Write-StatusIcon -IsEnabled `$false$Reset"
+
     # Red
-    Write-Output "${FGRed}Red      = ${Char_NoEntry}Errors | Write-Host `"🚫 ERROR`" -Fg Red$Reset"
-    
+    Write-Output "${FGRed}Red      = ${Char_NoEntry}Errors ${FGGray}| Write-Host `"🚫 ERROR`" -Fg Red$Reset"
+
     # Yellow
-    Write-Output "${FGYellow}Yellow   = ${Char_Bell}User Prompts | Write-Host `"Message`" -Fg Yellow$Reset"
-    
+    Write-Output "${FGYellow}Yellow   = ${Char_Bell}User Prompts ${FGGray}| Write-Host `"Message`" -Fg Yellow$Reset"
+
     # DkYellow
-    Write-Output "${FGDarkYellow}DkYellow = $Char_Warn Warning | Write-Host `"⚠ WARNING`" -Fg DarkYellow$Reset"
-    
+    Write-Output "${FGDarkYellow}DkYellow = $Char_Warn Warning ${FGGray}| Write-Host `"⚠ WARNING`" -Fg DarkYellow$Reset"
+
     # White
-    Write-Output "$Esc[40m${FGWhite}White    = ${Char_Gear} Icons/Titles | Write-Host `"⚙️ Title`" -Fg White$Reset"
-    
+    Write-Output "$Esc[40m${FGWhite}White    = ${Char_Gear} Icons/Titles ${FGGray}| Write-Host `"⚙️ Title`" -Fg White$Reset"
+
     # Gray
     Write-Output "$Esc[40m${FGGray}Gray     = ${Char_Info} Info/Details | Write-Host `"• Detail`" -Fg Gray$Reset"
-    
+
     # DkGray
-    Write-Output "$Esc[40m${FGDarkGray}DarkGray = ${Reset}${Char_Square}$Esc[40m${FGDarkGray}Disabled | Write-Host `"${Char_Square}Disabled`" -Fg DarkGray$Reset"
-    
+    Write-Output "$Esc[40m${FGDarkGray}DarkGray = ${Reset}${Char_Square}$Esc[40m${FGDarkGray}Disabled ${FGGray}| Write-Host `"${Char_Square}Disabled`" -Fg DarkGray$Reset"
+
     # Green
-    Write-Output "${FGGreen}Green    = ${Char_WhiteCheck}Success | Write-Host `"✅ Complete`" -Fg Green$Reset"
+    Write-Output "${FGGreen}Green    = ${Char_WhiteCheck}Success ${FGGray}| Write-Host `"✅ Complete`" -Fg Green$Reset"
     
     Write-Output ""
     # Fix: Convert char to string before multiplication
