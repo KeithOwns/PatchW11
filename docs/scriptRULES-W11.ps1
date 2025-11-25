@@ -102,7 +102,7 @@ function Show-VisualExamples {
 
     
     # Cyan
-    Write-Output "${FGCyan}Cyan     = ${TealBG}$Char_BallotCheck$Esc[40m${FGCyan} Enabled ${FGGray}| Write-StatusIcon -IsEnabled `$true$Reset"
+    Write-Output "${FGCyan}DarkCyan = ${TealBG}$Char_BallotCheck$Esc[40m${FGCyan} Enabled ${FGGray}| Write-StatusIcon -IsEnabled `$true$Reset"
 
     # DkRed
     Write-Output "${FGDarkRed}DarkRed  = ${Char_XSquare}Failure ${FGGray}| Write-StatusIcon -IsEnabled `$false$Reset"
