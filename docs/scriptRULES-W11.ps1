@@ -87,8 +87,8 @@ function Show-VisualExamples {
     $Block_TealBarSpacer = "$BGTeal__${Char_VBar}__  $Reset" # __|__  
 
     $CenteredTitle = (" " * $TitlePadding) + $Title
-    Write-Output ("$Block_TealBar" + (" " * $TitlePadding) + "$Bold${FGCyan}$Title$Reset")
-    Write-Output ("$Block_TealBar" + (" " * $TitlePadding) + "$Bold${FGCyan}Patch-W11 $Char_Loop$Reset")
+    Write-Output ("$Block_TealBarTitle" + (" " * $TitlePadding) + "$Bold${FGCyan}$Title$Reset")
+    Write-Output ("$Block_TealBarTitle" + (" " * $TitlePadding) + "$Bold${FGCyan}Patch-W11 $Char_Loop$Reset")
     # Fix: Convert char to string before multiplication
     Write-Output ("$FGBlue" + ("$Char_HBar" * 60) + "$Reset")
     Write-Output ""
