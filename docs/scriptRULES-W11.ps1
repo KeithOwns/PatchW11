@@ -86,16 +86,9 @@ function Show-VisualExamples {
     $Block_TealBarTitle = "$BGTeal__${Char_VBar}__$Reset"  # __|__
     $Block_TealBarSpacer = "$BGTeal__${Char_VBar}__  $Reset" # __|__
 
-    # Windows logo (2x2 grid of colored blocks)
-    $WinLogo1 = "${FGBlue}█${FGCyan}█${Reset}"  # Top line: blue cyan
-    $WinLogo2 = "${FGCyan}█${FGBlue}█${Reset}"  # Bottom line: cyan blue
-
     $CenteredTitle = (" " * $TitlePadding) + $Title
-    $LogoPadding1 = 60 - 5 - $TitlePadding - $Title.Length - 2  # Space before logo on line 1
-    $LogoPadding2 = 60 - 5 - $TitlePadding - "Patch-W11 $Char_Loop".Length - 2  # Space before logo on line 2
-
-    Write-Output ("$Block_TealBar" + (" " * $TitlePadding) + "$Bold${FGCyan}$Title$Reset" + (" " * $LogoPadding1) + $WinLogo1)
-    Write-Output ("$Block_TealBar" + (" " * $TitlePadding) + "$Bold${FGCyan}Patch-W11 $Char_Loop$Reset" + (" " * $LogoPadding2) + $WinLogo2)
+    Write-Output ("$Block_TealBar" + (" " * $TitlePadding) + "$Bold${FGCyan}$Title$Reset")
+    Write-Output ("$Block_TealBar" + (" " * $TitlePadding) + "$Bold${FGCyan}Patch-W11 $Char_Loop$Reset")
     # Fix: Convert char to string before multiplication
     Write-Output ("$FGBlue" + ("$Char_HBar" * 60) + "$Reset")
     Write-Output ""
