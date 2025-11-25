@@ -78,16 +78,19 @@ $SeparatorLine = "$FGBlue" + ($SeparatorChar * 60) + "$Reset"
 # ============================================================================
 function Show-VisualExamples {
     Write-Output ""
+    $Title = "SCRIPT WRITING RULES"
+    $TitlePadding = [Math]::Floor((60 - $Title.Length) / 2)
 
-    # Windows logo (2x2 grid of blue squares)
-    $WinSquare = "${FGBlue}█${Reset}"
+    # Construct visual blocks using variables
+    $Block_TealBar = "$BGTeal  $Char_VBar  $Reset"
+    $Block_TealBarTitle = "$BGTeal__${Char_VBar}__$Reset"  # __|__
+    $Block_TealBarSpacer = "$BGTeal__${Char_VBar}__  $Reset" # __|__
 
-    # Create the header with Windows logo on the left
-    Write-Output "${WinSquare}${WinSquare}                   ${FGCyan}SCRIPT WRITING RULES${Reset}"
-    Write-Output "${WinSquare}${WinSquare}                   ${FGCyan}Patch-W11 $Char_Loop${Reset}"
-
-    # Blue separator line
-    Write-Output ("${FGBlue}" + ("$Char_HBar" * 60) + "$Reset")
+    $CenteredTitle = (" " * $TitlePadding) + $Title
+    Write-Output ("$Block_TealBar" + (" " * $TitlePadding) + "$Bold${FGCyan}$Title$Reset")
+    Write-Output ("$Block_TealBar" + (" " * $TitlePadding) + "$Bold${FGCyan}Patch-W11 $Char_Loop$Reset")
+    # Fix: Convert char to string before multiplication
+    Write-Output ("$FGBlue" + ("$Char_HBar" * 60) + "$Reset")
     Write-Output ""
 
     # Color Usage Guide Section (Compact)
