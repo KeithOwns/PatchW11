@@ -69,6 +69,11 @@ param(
     [string]$SaveAsBaseline
 )
 
+# --- FIX: Reset environment settings to prevent conflicts from previous scripts ---
+Set-StrictMode -Off
+$ErrorActionPreference = 'Continue'
+# --------------------------------------------------------------------------------
+
 # Global variables for tracking results
 $script:SecurityChecks = @()
 $script:BaselineData = $null
