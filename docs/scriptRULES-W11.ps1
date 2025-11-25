@@ -45,7 +45,7 @@ $Char_XSquare     = [char]0x274E
 $Char_NoEntry     = [char]::ConvertFromUtf32(0x1F6AB)
 $Char_Bell        = [char]::ConvertFromUtf32(0x1F514)
 $Char_Gear        = [char]0x2699
-$Char_Square      = [char]0x2610
+$Char_Square      = [char]::ConvertFromUtf32(0x1F533)
 $Char_WhiteCheck  = [char]0x2705
 $Char_Loop        = [char]::ConvertFromUtf32(0x1F504)
 
