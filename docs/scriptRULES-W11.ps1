@@ -80,28 +80,29 @@ function Show-VisualExamples {
     Write-Output ""
     $Title = "SCRIPT WRITING RULES"
     $TitlePadding = [Math]::Floor((60 - $Title.Length) / 2)
-
+    
     # Construct visual blocks using variables
     $Block_TealBar = "$BGTeal  $Char_VBar  $Reset"
     $Block_TealBarTitle = "$BGTeal__${Char_VBar}__$Reset"  # __|__
     $Block_TealBarSpacer = "$BGTeal__${Char_VBar}__  $Reset" # __|__
 
     $CenteredTitle = (" " * $TitlePadding) + $Title
-    Write-Output ("$Block_TealBarTitle" + (" " * $TitlePadding) + "$Bold${FGCyan}$Title$Reset")
+    Write-Output ("$Block_TealBar" + (" " * $TitlePadding) + "$Bold${FGCyan}$Title$Reset")
     Write-Output ("$Block_TealBar" + (" " * $TitlePadding) + "$Bold${FGCyan}Patch-W11 $Char_Loop$Reset")
     # Fix: Convert char to string before multiplication
     Write-Output ("$FGBlue" + ("$Char_HBar" * 60) + "$Reset")
     Write-Output ""
 
     # Color Usage Guide Section (Compact)
-    Write-Output "$Bold${FGCyan}Color Usage Guide$Reset"
+    Write-Output "$Bold${FGCyan}Color Usage Guide:$Reset"
     Write-Output ""
+    Write-Output "${Bold}${FGCyan}Cyan     = $Char_Loop HEADER ${FGWhite}| Write-Host `"[HEADER]`" -Fg Cyan$Reset"
     
     # DkBlue
 
 
     
-    # Cyan
+    # DarkCyan
     Write-Output "${FGCyan}DarkCyan = ${TealBG}$Char_BallotCheck$Esc[40m${FGCyan} Enabled ${FGGray}| Write-StatusIcon -IsEnabled `$true$Reset"
 
     # DkRed
@@ -123,7 +124,7 @@ function Show-VisualExamples {
     Write-Output "$Esc[40m${FGGray}Gray     = ${Char_Info} Info/Details | Write-Host `"${Char_Info} Detail`" -Fg Gray$Reset"
 
     # DkGray
-    Write-Output "$Esc[40m${FGDarkGray}DarkGray = $Esc[40m$Esc[90m$([char]0x2610)$Esc[40m${FGDarkGray} Disabled ${FGGray}| Write-Host `"$Esc[47m$Esc[30m${Char_Square}$Esc[40m$Esc[37mDisabled`" -Fg DarkGray$Reset"
+    Write-Output "$Esc[40m${FGDarkGray}DarkGray = $Esc[40m${FGDarkGray}☐ Disabled ${FGGray}| Write-Host `"☐ Disabled`" -Fg DarkGray$Reset"
 
     # Green
     Write-Output "${FGGreen}Green    = ${Char_WhiteCheck}Success ${FGGray}| Write-Host `"✅ Complete`" -Fg Green$Reset"
