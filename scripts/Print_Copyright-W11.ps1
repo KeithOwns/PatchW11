@@ -6,6 +6,16 @@
     the file was last saved, using that year in the copyright statement.
 #>
 
+<#PSScriptInfo
+.VERSION 1.0
+.GUID 40683a3e-d919-4702-8611-66795f7253b3 # Replace with a unique GUID
+.AUTHOR AIIT Support
+.COMPANYNAME www.AIIT.support
+.COPYRIGHT (c) 2024, www.AIIT.support. All Rights Reserved.
+.LICENSEURI http://www.aiit.support/license
+.TAGS Utility
+#>
+
 # --- Intellectual Property Notice (Output) ---
 
 # 1. Get the full path of the currently executing script using the reliable $PSCommandPath variable.
