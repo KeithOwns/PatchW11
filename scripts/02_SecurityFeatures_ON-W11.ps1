@@ -85,6 +85,9 @@ $Char_Person      = [char]::ConvertFromUtf32(0x1F464) # 👤
 $Char_Satellite   = [char]::ConvertFromUtf32(0x1F4E1) # 📡
 $Char_Globe       = [char]::ConvertFromUtf32(0x1F310) # 🌐
 $Char_Lock        = [char]::ConvertFromUtf32(0x1F512) # 🔒
+$Char_CardIndex   = [char]::ConvertFromUtf32(0x1F5C2) # 🗂️
+$Char_Desktop     = [char]::ConvertFromUtf32(0x1F5A5) # 🖥️
+$Char_EmDash      = [char]0x2014 # — (Em Dash)
 
 # Color Guide Characters
 $Char_BallotCheck = [char]0x2611 # ☑
@@ -114,11 +117,14 @@ $FGDarkGray = "$Esc[90m"
 $BGTeal     = "$Esc[46m$FGBlack"  # DarkCyan BG
 $BGDarkGray = "$Esc[100m$FGBlack" # DarkGray BG
 
-# Standard Separator (Reverted to Hyphens per request)
-$SeparatorLine = "$FGBlue" + ("-" * 60) + "$Reset"
+# Standard Separator (Hyphens) - CHANGED COLOR TO DARK GRAY
+$SeparatorLine = "$FGDarkGray" + ("-" * 60) + "$Reset"
 
-# Double Separator (Equals signs, for specific locations per request)
-$DoubleSeparatorLine = "$FGBlue" + ("=" * 60) + "$Reset"
+# Double Separator (CHANGED: Equals signs to Em Dashes per request)
+$DoubleSeparatorLine = "$FGBlue" + ([string]$Char_EmDash * 60) + "$Reset"
+
+# Em Dash Separator (Already defined, but redundant now that DoubleSeparator uses Em Dashes)
+$EmDashLine = "$FGBlue" + ([string]$Char_EmDash * 60) + "$Reset"
 
 # --- Helper Functions (Formatted) ---
 
@@ -161,7 +167,8 @@ function Write-SectionHeader {
         [string]$Icon = $Char_Shield,
 
         [Parameter(Mandatory = $false)]
-        [string]$IconColor = $FGWhite
+        # CHANGED: Default icon color to DarkCyan ($FGDarkCyan)
+        [string]$IconColor = $FGDarkCyan
     )
     
     Write-Host ""
@@ -171,8 +178,8 @@ function Write-SectionHeader {
     $Padding = [math]::Max(0, [math]::Floor((60 - $ContentLength) / 2))
     $Spaces = " " * $Padding
 
-    # Cyan Header Title
-    Write-Host "$Spaces$IconColor$Icon $FGCyan$Title$Reset"
+    # White Header Title
+    Write-Host "$Spaces$IconColor$Icon $FGWhite$Title$Reset"
     
     # Use standard hyphen separator for sections
     Write-Host $SeparatorLine
@@ -287,8 +294,26 @@ function Get-DefenderStatus {
     #>
     param()
 
-    # Confirmed use of Shield icon with ADDED SPACE TO LEFT
-    Write-SectionHeader " Virus & threat protection " $Char_Shield
+    # MANUAL HEADER FORMATTING (Specific Request to Swap Lines and Center Align the Main Title)
+    
+    # 1. Print "— Windows Security features —" (Centered)
+    $HeaderTitle = "$Char_EmDash Windows Security features $Char_EmDash"
+    $HeaderPadding = [math]::Max(0, [math]::Floor((60 - $HeaderTitle.Length) / 2))
+    Write-Host (" " * $HeaderPadding) -NoNewline
+    Write-Host $HeaderTitle -ForegroundColor Cyan
+
+    # 2. Print Separator (Swapped to be ABOVE the subsection title)
+    Write-Host ("-" * 60) -ForegroundColor DarkGray
+    
+    # 3. Print "🛡 Virus & threat protection" (LEFT ALIGNED per request)
+    $Title = " Virus & threat protection "
+    $Icon = $Char_Shield
+    $IconColor = $FGDarkCyan
+    
+    # CHANGED: Left Align with 2 space indent
+    $Spaces = "  "
+    
+    Write-Host "$Spaces$IconColor$Icon $FGWhite$Title$Reset"
 
     # Check for third-party antivirus software
     $avInfo = Get-ThirdPartyAntivirus
@@ -322,7 +347,8 @@ function Get-DefenderStatus {
 
     $enabled = !$realTimeOff
     Write-StatusIcon $enabled -Severity "Critical"
-    Write-Host "Real-time protection" -ForegroundColor White
+    # CHANGED: Text color to Gray
+    Write-Host "Real-time protection" -ForegroundColor Gray
     Add-SecurityCheck -Category "Virus & Threat Protection" -Name "Real-time protection" -IsEnabled $enabled -Severity "Critical" `
         -Remediation "Set-MpPreference -DisableRealtimeMonitoring `$false" `
         -Details "REQUIRED for: Controlled Folder Access, Behavior Monitoring, Network Protection"
@@ -334,13 +360,15 @@ function Get-DefenderStatus {
     $enabled = !$preferences.DisableDevDriveScanning
     if (!$script:RealTimeProtectionEnabled -and $enabled) {
         Write-StatusIcon $false -Severity "Info"
-        Write-Host "Dev Drive protection" -ForegroundColor White
+        # CHANGED: Text color to Gray
+        Write-Host "Dev Drive protection" -ForegroundColor Gray
         Add-SecurityCheck -Category "Virus & Threat Protection" -Name "Dev Drive protection" -IsEnabled $false -Severity "Info" `
             -Remediation "Enable Real-time protection first" `
             -Details "Requires Real-time protection"
     } else {
         Write-StatusIcon $enabled -Severity "Info"
-        Write-Host "Dev Drive protection" -ForegroundColor White
+        # CHANGED: Text color to Gray
+        Write-Host "Dev Drive protection" -ForegroundColor Gray
         Add-SecurityCheck -Category "Virus & Threat Protection" -Name "Dev Drive protection" -IsEnabled $enabled -Severity "Info" `
             -Remediation "Set-MpPreference -DisableDevDriveScanning `$false" `
             -Details "Scans developer drives for threats"
@@ -348,7 +376,8 @@ function Get-DefenderStatus {
     
     $enabled = $preferences.MAPSReporting -ne 0
     Write-StatusIcon $enabled -Severity "Warning"
-    Write-Host "Cloud-delivered protection" -NoNewline -ForegroundColor White
+    # CHANGED: Text color to Gray
+    Write-Host "Cloud-delivered protection" -NoNewline -ForegroundColor Gray
     if (!$script:RealTimeProtectionEnabled -and $enabled) {
         Write-Host " (limited effectiveness)" -ForegroundColor DarkGray
     } else { Write-Host "" }
@@ -359,7 +388,8 @@ function Get-DefenderStatus {
     $sampleSubmissionConsent = $preferences.SubmitSamplesConsent
     $enabled = $sampleSubmissionConsent -ne 0
     Write-StatusIcon $enabled -Severity "Warning"
-    Write-Host "Automatic sample submission" -ForegroundColor White
+    # CHANGED: Text color to Gray
+    Write-Host "Automatic sample submission" -ForegroundColor Gray
     Add-SecurityCheck -Category "Virus & Threat Protection" -Name "Automatic sample submission" -IsEnabled $enabled -Severity "Warning" `
         -Remediation "Set-MpPreference -SubmitSamplesConsent SendAllSamples" `
         -Details "Sends suspicious files to Microsoft"
@@ -368,12 +398,14 @@ function Get-DefenderStatus {
         $tamperProtection = Get-ItemPropertyValue -Path "HKLM:\SOFTWARE\Microsoft\Windows Defender\Features" -Name "TamperProtection" -ErrorAction Stop
         $enabled = ($tamperProtection -eq 1 -or $tamperProtection -eq 5)
         Write-StatusIcon $enabled -Severity "Critical"
-        Write-Host "Tamper protection" -ForegroundColor White
+        # CHANGED: Text color to Gray
+        Write-Host "Tamper protection" -ForegroundColor Gray
         Add-SecurityCheck -Category "Virus & Threat Protection" -Name "Tamper protection" -IsEnabled $enabled -Severity "Critical" `
             -Remediation "Enable via Windows Security UI" `
             -Details "Prevents malicious apps from changing settings"
     } catch {
         Write-Host " ? " -NoNewline -ForegroundColor Yellow
+        # CHANGED: Text color to Gray
         Write-Host "Tamper protection (Unable to determine)" -ForegroundColor Gray
         Add-SecurityCheck -Category "Virus & Threat Protection" -Name "Tamper protection" -IsEnabled $false -Severity "Critical" `
             -Details "Unable to determine status"
@@ -382,16 +414,21 @@ function Get-DefenderStatus {
     if ($script:RealTimeProtectionEnabled) {
         $cfaEnabled = $preferences.EnableControlledFolderAccess -eq 1
         Write-StatusIcon $cfaEnabled -Severity "Warning"
-        Write-Host "Controlled folder access" -ForegroundColor White
+        # CHANGED: Text color to Gray
+        Write-Host "Controlled folder access" -ForegroundColor Gray
         Add-SecurityCheck -Category "Virus & Threat Protection" -Name "Controlled folder access" -IsEnabled $cfaEnabled -Severity "Warning" `
             -Remediation "Set-MpPreference -EnableControlledFolderAccess Enabled" `
             -Details "Protects important folders from ransomware"
     }
+
+    # ADDED: Separator line at the end of the section (divides from Account Protection)
+    Write-Host $SeparatorLine
 }
 
 function Get-AccountProtection {
     param()
     
+    # Header: "  👤 Account protection"
     Write-SectionHeader "Account protection" $Char_Person
     
     $helloConfigured = $false
@@ -401,7 +438,8 @@ function Get-AccountProtection {
     } catch { }
     
     Write-StatusIcon $helloConfigured -Severity "Warning"
-    Write-Host "Windows Hello" -ForegroundColor White
+    # CHANGED: Text color to Gray
+    Write-Host "Windows Hello" -ForegroundColor Gray
     Add-SecurityCheck -Category "Account Protection" -Name "Windows Hello" -IsEnabled $helloConfigured -Severity "Warning" `
         -Remediation "Configure via Settings > Accounts" `
         -Details "Biometric authentication"
@@ -413,7 +451,8 @@ function Get-AccountProtection {
     } catch { }
     
     Write-StatusIcon $dynamicLockEnabled -Severity "Info"
-    Write-Host "Dynamic lock" -ForegroundColor White
+    # CHANGED: Text color to Gray
+    Write-Host "Dynamic lock" -ForegroundColor Gray
     Add-SecurityCheck -Category "Account Protection" -Name "Dynamic lock" -IsEnabled $dynamicLockEnabled -Severity "Info" `
         -Remediation "Configure via Settings > Accounts > Dynamic lock" `
         -Details "Locks PC when paired device leaves range"
@@ -426,15 +465,20 @@ function Get-AccountProtection {
     
     $enabled = $enrolledFactors -eq 2
     Write-StatusIcon $enabled -Severity "Info"
-    Write-Host "Facial recognition" -ForegroundColor White
+    # CHANGED: Text color to Gray
+    Write-Host "Facial recognition" -ForegroundColor Gray
     Add-SecurityCheck -Category "Account Protection" -Name "Facial recognition" -IsEnabled $enabled -Severity "Info" `
         -Remediation "Configure via Settings > Accounts" `
         -Details "Face recognition for sign-in"
+
+    # ADDED: Separator line at the end of the section (divides from Firewall)
+    Write-Host $SeparatorLine
 }
 
 function Get-FirewallStatus {
     param()
     
+    # Header: "  📡 Firewall & network protection"
     Write-SectionHeader "Firewall & network protection" $Char_Satellite
     
     $activeNetworks = @{}
@@ -460,7 +504,8 @@ function Get-FirewallStatus {
             if ($networkName) { $suffix = " ($networkName)" }
 
             Write-StatusIcon $enabled -Severity "Critical"
-            Write-Host "$DisplayName network" -NoNewline -ForegroundColor White
+            # CHANGED: Text color to Gray
+            Write-Host "$DisplayName network" -NoNewline -ForegroundColor Gray
             Write-Host $suffix -ForegroundColor DarkGray
             
             Add-SecurityCheck -Category "Firewall & Network Protection" -Name "$DisplayName network firewall" -IsEnabled $enabled -Severity "Critical" `
@@ -468,6 +513,7 @@ function Get-FirewallStatus {
                 -Details "Firewall for $DisplayName profile"
         } catch {
             Write-Host " ? " -NoNewline -ForegroundColor Yellow
+            # CHANGED: Text color to Gray
             Write-Host "$DisplayName network (Unknown)" -ForegroundColor Gray
             Add-SecurityCheck -Category "Firewall & Network Protection" -Name "$DisplayName network firewall" -IsEnabled $false -Severity "Critical" `
                 -Details "Unable to determine status"
@@ -493,7 +539,8 @@ function Get-FirewallStatus {
             if ($isUnsecured) {
                 # Critical Warning
                 Write-StatusIcon $false -Severity "Critical"
-                Write-Host "Wi-Fi Security" -NoNewline -ForegroundColor White
+                # CHANGED: Text color to Gray
+                Write-Host "Wi-Fi Security" -NoNewline -ForegroundColor Gray
                 Write-Host " (UNSECURED: $authMethod)" -ForegroundColor Red
                 
                 Add-SecurityCheck -Category "Firewall & Network Protection" -Name "Wi-Fi Security" -IsEnabled $false -Severity "Critical" `
@@ -502,7 +549,8 @@ function Get-FirewallStatus {
             } else {
                 # Secure
                 Write-StatusIcon $true -Severity "Info"
-                Write-Host "Wi-Fi Security" -NoNewline -ForegroundColor White
+                # CHANGED: Text color to Gray
+                Write-Host "Wi-Fi Security" -NoNewline -ForegroundColor Gray
                 # CHANGED: Text color to DarkCyan for secure networks as requested
                 Write-Host " ($authMethod)" -ForegroundColor DarkCyan
                 
@@ -515,12 +563,16 @@ function Get-FirewallStatus {
     } catch {
         # Silent fail for network check to avoid clutter
     }
+    
+    # ADDED: Separator line at the end of the section (divides from Reputation)
+    Write-Host $SeparatorLine
 }
 
 function Get-ReputationProtection {
     param()
 
-    Write-SectionHeader "Reputation-based protection" $Char_Globe
+    # CHANGED: Added leading space to title
+    Write-SectionHeader " App & browser control" $Char_CardIndex
     
     $preferences = $null
     if ($script:RealTimeProtectionEnabled) {
@@ -544,8 +596,10 @@ function Get-ReputationProtection {
     }
     
     Write-StatusIcon $enabled -Severity "Warning"
-    Write-Host "Check apps and files" -ForegroundColor White
-    Add-SecurityCheck -Category "App & Browser Control" -Name "Check apps and files" -IsEnabled $enabled -Severity "Warning" `
+    # CHANGED: Text color to Gray
+    Write-Host "Check apps and files" -ForegroundColor Gray
+    # CHANGED: Category name to "App & browser control"
+    Add-SecurityCheck -Category "App & browser control" -Name "Check apps and files" -IsEnabled $enabled -Severity "Warning" `
         -Remediation "Set-ItemProperty -Path '$userPath' -Name 'SmartScreenEnabled' -Value 'Warn'" `
         -Details "SmartScreen checks downloads"
     
@@ -573,8 +627,10 @@ function Get-ReputationProtection {
     if (-not $IsConfigured) { $enabled = $true } # Default ON
 
     Write-StatusIcon $enabled -Severity "Warning"
-    Write-Host "SmartScreen for Microsoft Edge" -ForegroundColor White
-    Add-SecurityCheck -Category "App & Browser Control" -Name "SmartScreen for Microsoft Edge" -IsEnabled $enabled -Severity "Warning" `
+    # CHANGED: Text color to Gray
+    Write-Host "SmartScreen for Microsoft Edge" -ForegroundColor Gray
+    # CHANGED: Category name to "App & browser control"
+    Add-SecurityCheck -Category "App & browser control" -Name "SmartScreen for Microsoft Edge" -IsEnabled $enabled -Severity "Warning" `
         -Remediation "Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Edge\SmartScreenEnabled' -Name '(default)' -Value 1" `
         -Details "SmartScreen for Edge"
 
@@ -586,8 +642,10 @@ function Get-ReputationProtection {
         if ($preferences) { $enabled = $preferences.PUAProtection -eq 1 }
         Write-StatusIcon $enabled -Severity "Warning"
         # Renamed as requested
-        Write-Host "Potentially unwanted app blocking" -ForegroundColor White
-        Add-SecurityCheck -Category "App & Browser Control" -Name "Potentially unwanted app blocking" -IsEnabled $enabled -Severity "Warning" `
+        # CHANGED: Text color to Gray
+        Write-Host "Potentially unwanted app blocking" -ForegroundColor Gray
+        # CHANGED: Category name to "App & browser control"
+        Add-SecurityCheck -Category "App & browser control" -Name "Potentially unwanted app blocking" -IsEnabled $enabled -Severity "Warning" `
             -Remediation "Set-MpPreference -PUAProtection Enabled" `
             -Details "Blocks potentially unwanted apps"
     }
@@ -597,8 +655,8 @@ function Get-ReputationProtection {
     if ($checkAppsAndFilesEnabled) {
         $blockDownloads = Get-EdgePUABlockDownloadsEnabled
         Write-StatusIcon $blockDownloads -Severity "Info"
-        Write-Host "Block potentially unwanted downloads" -ForegroundColor White
-        Add-SecurityCheck -Category "App & Browser Control" -Name "Block potentially unwanted downloads" -IsEnabled $blockDownloads -Severity "Info" `
+        Write-Host "Block potentially unwanted downloads" -ForegroundColor Gray
+        Add-SecurityCheck -Category "App & browser control" -Name "Block potentially unwanted downloads" -IsEnabled $blockDownloads -Severity "Info" `
             -Remediation "Configure via Edge settings" `
             -Details "Blocks unwanted downloads"
     }
@@ -608,10 +666,15 @@ function Get-ReputationProtection {
     $storeSmartScreen = Get-RegValue -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\AppHost" -Name "EnableWebContentEvaluation" -DefaultValue 1
     $enabled = $storeSmartScreen -ne 0
     Write-StatusIcon $enabled -Severity "Info"
-    Write-Host "SmartScreen for Microsoft Store apps" -ForegroundColor White
-    Add-SecurityCheck -Category "App & Browser Control" -Name "SmartScreen for Microsoft Store apps" -IsEnabled $enabled -Severity "Info" `
+    # CHANGED: Text color to Gray
+    Write-Host "SmartScreen for Microsoft Store apps" -ForegroundColor Gray
+    # CHANGED: Category name to "App & browser control"
+    Add-SecurityCheck -Category "App & browser control" -Name "SmartScreen for Microsoft Store apps" -IsEnabled $enabled -Severity "Info" `
         -Remediation "Set registry EnableWebContentEvaluation to 1" `
         -Details "SmartScreen for Store apps"
+        
+    # ADDED: Separator line at the end of the section (divides from Core Isolation)
+    Write-Host $SeparatorLine
 }
 
 function Get-EdgePUABlockDownloadsEnabled {
@@ -634,29 +697,38 @@ function Get-EdgePUABlockDownloadsEnabled {
 function Get-CoreIsolationStatus {
     param()
     
-    Write-SectionHeader "Core isolation" $Char_Lock
+    # CHANGED: Header Title from "Core isolation" to "Device security"
+    # Use $Char_Desktop (🖥️) icon
+    # Added leading space to title for double spacing alignment
+    Write-SectionHeader " Device security" $Char_Desktop
     
     $memIntegrity = Get-RegValue -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" -Name "Enabled" -DefaultValue 0
     $enabled = $memIntegrity -eq 1
     Write-StatusIcon $enabled -Severity "Warning"
-    Write-Host "Memory integrity" -ForegroundColor White
-    Add-SecurityCheck -Category "Device Security" -Name "Memory integrity" -IsEnabled $enabled -Severity "Warning" `
+    # CHANGED: Text color to Gray
+    Write-Host "Memory integrity" -ForegroundColor Gray
+    # CHANGED: Category name to "Device security"
+    Add-SecurityCheck -Category "Device security" -Name "Memory integrity" -IsEnabled $enabled -Severity "Warning" `
         -Remediation "Enable via Windows Security > Device security" `
         -Details "Hardware-based code integrity"
 
     $kernelStackProt = Get-RegValue -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\KernelShadowStacks" -Name "Enabled" -DefaultValue 0
     $enabled = $kernelStackProt -ge 1
     Write-StatusIcon $enabled -Severity "Info"
-    Write-Host "Kernel-mode Hardware-enforced Stack" -ForegroundColor White
-    Add-SecurityCheck -Category "Device Security" -Name "Kernel-mode Hardware-enforced Stack" -IsEnabled $enabled -Severity "Info" `
+    # CHANGED: Text color to Gray
+    Write-Host "Kernel-mode Hardware-enforced Stack" -ForegroundColor Gray
+    # CHANGED: Category name to "Device security"
+    Add-SecurityCheck -Category "Device security" -Name "Kernel-mode Hardware-enforced Stack" -IsEnabled $enabled -Severity "Info" `
         -Remediation "Requires compatible CPU and Win11 22H2+" `
         -Details "Hardware-based kernel stack protection"
 
     $lsaProtection = Get-RegValue -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" -Name "RunAsPPL" -DefaultValue 0
     $enabled = $lsaProtection -ge 1
     Write-StatusIcon $enabled -Severity "Warning"
-    Write-Host "Local Security Authority protection" -ForegroundColor White
-    Add-SecurityCheck -Category "Device Security" -Name "Local Security Authority protection" -IsEnabled $enabled -Severity "Warning" `
+    # CHANGED: Text color to Gray
+    Write-Host "Local Security Authority protection" -ForegroundColor Gray
+    # CHANGED: Category name to "Device security"
+    Add-SecurityCheck -Category "Device security" -Name "Local Security Authority protection" -IsEnabled $enabled -Severity "Warning" `
         -Remediation "Set registry RunAsPPL to 1" `
         -Details "Protects LSA process"
 
@@ -671,10 +743,15 @@ function Get-CoreIsolationStatus {
     }
 
     Write-StatusIcon $enabled -Severity "Warning"
-    Write-Host "Microsoft Vulnerable Driver Blocklist" -ForegroundColor White
-    Add-SecurityCheck -Category "Device Security" -Name "Microsoft Vulnerable Driver Blocklist" -IsEnabled $enabled -Severity "Warning" `
+    # CHANGED: Text color to Gray
+    Write-Host "Microsoft Vulnerable Driver Blocklist" -ForegroundColor Gray
+    # CHANGED: Category name to "Device security"
+    Add-SecurityCheck -Category "Device security" -Name "Microsoft Vulnerable Driver Blocklist" -IsEnabled $enabled -Severity "Warning" `
         -Remediation "Set VulnerableDriverBlocklistEnable to 1" `
         -Details "Blocks known vulnerable drivers"
+        
+    # ADDED: Separator line at the end of the section (divides from Scan Info or Summary)
+    Write-Host $SeparatorLine
 }
 
 function Get-ScanInformation {
@@ -699,31 +776,41 @@ function Get-ScanInformation {
         Write-SectionHeader "Current threats" $Char_Warn
 
         if ($quickScanTime) {
+            # CHANGED: Text color to Gray
             Write-Host "  Last quick scan:      " -NoNewline -ForegroundColor Gray
             Write-Host "$($quickScanTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor $quickScanColor
         } else {
+            # CHANGED: Text color to Gray
             Write-Host "  Last quick scan:      " -NoNewline -ForegroundColor Gray
             Write-Host "-" -ForegroundColor DarkGray
         }
 
         if ($fullScanTime) {
+            # CHANGED: Text color to Gray
             Write-Host "  Last full scan:       " -NoNewline -ForegroundColor Gray
             Write-Host "$($fullScanTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor $fullScanColor
         } else {
+            # CHANGED: Text color to Gray
             Write-Host "  Last full scan:       " -NoNewline -ForegroundColor Gray
             Write-Host "-" -ForegroundColor DarkGray
         }
 
+        # CHANGED: Text color to Gray
         Write-Host "  Signature version:    " -NoNewline -ForegroundColor Gray
         Write-Host $status.AntivirusSignatureVersion -ForegroundColor White
 
         if ($lastUpdatedTime) {
+            # CHANGED: Text color to Gray
             Write-Host "  Last updated:         " -NoNewline -ForegroundColor Gray
             Write-Host "$($lastUpdatedTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor $lastUpdateColor
         } else {
+            # CHANGED: Text color to Gray
             Write-Host "  Last updated:         " -NoNewline -ForegroundColor Gray
             Write-Host "-" -ForegroundColor DarkGray
         }
+        
+        # ADDED: Separator line at the end of this conditional section
+        Write-Host $SeparatorLine
     }
 }
 
@@ -753,22 +840,43 @@ function Show-SecuritySummary {
     Write-Host "`n" -NoNewline
     
     if ($disabled -eq 0) {
-        # All enabled state - NEW FORMAT v2
+        # All enabled state - NEW CENTERED FORMAT v3
         
-        # Line 1: Header + Colon
-        Write-Host "     Windows Security features report:" -ForegroundColor Cyan
+        # 1. Em Dash Separator (REPLACED HYPHENS)
+        Write-Host $EmDashLine
         
-        # Line 2: Empty
+        # 2. Header Text: "Windows Security features report:" (Centered)
+        $text1 = "Windows Security features report:"
+        $pad1 = [math]::Max(0, [math]::Floor((60 - $text1.Length) / 2))
+        Write-Host (" " * $pad1) -NoNewline
+        Write-Host $text1 -ForegroundColor Cyan
+        
+        # 3. Empty Line
         Write-Host ""
         
-        # Line 3: "All security features enabled"
-        Write-Host "     $FGGreen All security features enabled$Reset"
+        # 4. Status Text: "All security features enabled" (Centered)
+        $text2 = "All security features enabled"
+        $pad2 = [math]::Max(0, [math]::Floor((60 - $text2.Length) / 2))
+        # Reduce padding slightly to account for the checkmark width
+        $pad2 = [math]::Max(0, $pad2 - 2) 
+        Write-Host (" " * $pad2) -NoNewline
+        # ADDED: Checkmark icon
+        Write-Host "$FGGreen$Char_WhiteCheck $text2$Reset"
         
-        # Line 4: Separator (=)
+        # 5. Double Separator (Equals)
         Write-Host $DoubleSeparatorLine
         
-        # Line 5: "No current threats"
-        # REMOVED: This is now displayed ONLY after scanning (Enter key press)
+        # 6. Threat Text: "No current threats" (Centered) - Only if applicable
+        if ($script:ScanStatusAllGreen -and $script:RealTimeProtectionEnabled) {
+            $text3 = "No current threats"
+            $pad3 = [math]::Max(0, [math]::Floor((60 - $text3.Length) / 2))
+            Write-Host (" " * $pad3) -NoNewline
+            Write-Host "$FGGreen$text3$Reset"
+        }
+        
+        # 7. Bottom Standard Separator (Hyphens)
+        Write-Host $SeparatorLine
+
     } else {
         # Mixed state (Old behavior)
         # Separator (Hyphens -)
@@ -1057,15 +1165,31 @@ function Invoke-ApplySecuritySettings {
 
 # --- Main execution ---
 try {
+    # --- Determine Copyright Year ---
+    $ScriptPath = $PSCommandPath
+    if ($ScriptPath) {
+        $LastEditYear = (Get-Item $ScriptPath).LastWriteTime.Year
+    } else {
+        $LastEditYear = (Get-Date).Year
+    }
+    $CopyrightLine = "© $LastEditYear, www.AIIT.support. All Rights Reserved."
+
     Clear-Host
     Write-Host "`n" -NoNewline
     
     # Updated Main Title Block
-    # 60 chars. "WINDOWS SECURITY STATUS REPORT" is 30 chars. (60-30)/2 = 15 spaces.
-    Write-Host "               $FGCyan WINDOWS SECURITY STATUS REPORT$Reset"
+    # 60 chars. "——  WINDOWS SECURITY CONFIGURATOR ——" is roughly 36 chars.
+    # (60 - 36) / 2 = 12 spaces padding.
+    # CHANGED: Title text per request
+    Write-Host "            $FGCyan——  WINDOWS SECURITY CONFIGURATOR ——$Reset"
     # "Patch-W11 🔄" is ~12 chars. (60-12)/2 = 24 spaces.
-    # CHANGED: Color to $FGDarkGreen
     Write-Host "                        $FGDarkGreen Patch-W11 $Char_Loop$Reset"
+    
+    # Copyright Line (Centered)
+    $padCopyright = [math]::Max(0, [math]::Floor((60 - $CopyrightLine.Length) / 2))
+    Write-Host (" " * $padCopyright) -NoNewline
+    Write-Host "$FGCyan$CopyrightLine$Reset"
+
     # REVERTED: Double Separator (Equals =) for top line
     Write-Host $DoubleSeparatorLine
 
@@ -1078,6 +1202,7 @@ try {
     Get-DefenderStatus
     Write-Host "" # Added spacer
     
+    # MOVED: Get-AccountProtection to be immediately after Get-DefenderStatus
     Get-AccountProtection
     Write-Host "" # Added spacer
     
@@ -1103,12 +1228,20 @@ try {
         Write-Host "HTML Export not fully implemented in this view"
     }
     
-    # Additional Options
+    # Additional Options - RESTORED
     Write-Host "  $FGYellow ADDITIONAL OPTIONS$Reset"
     Write-Host $SeparatorLine
-    # UPDATED: Key instruction
-    Write-Host "  Press 'Enter' to Run a quick scan" -ForegroundColor White
-    Write-Host "  Press Spacebar to Quit" -ForegroundColor White
+    
+    # UPDATED: Key instructions per request
+    # Line 1: "  Press " (White) + "Enter" (Yellow) + " to Run a quick scan" (White)
+    Write-Host "  Press " -NoNewline -ForegroundColor White
+    Write-Host "Enter" -NoNewline -ForegroundColor Yellow
+    Write-Host " to Run a quick scan" -ForegroundColor White
+    
+    # Line 2: "  Press " (White) + "Spacebar" (Yellow) + " to Quit" (White)
+    Write-Host "  Press " -NoNewline -ForegroundColor White
+    Write-Host "Spacebar" -NoNewline -ForegroundColor Yellow
+    Write-Host " to Quit" -ForegroundColor White
 
     $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     Write-Host ""
@@ -1136,15 +1269,17 @@ try {
         } catch { Write-Host "  Error: $_" }
     } elseif ($key.Character -eq ' ') {
         Write-Host "  Quitting..." -ForegroundColor Gray
-        # Removed Restart-WindowsSecurity from here
+        # Removed Restart-WindowsSecurity from here as requested
     }
 
     # Footer
     Write-Host "`n" -NoNewline
     Write-Host $SeparatorLine
-    $lastEditedTimestamp = "2025-11-26"
-    Write-Host "Last Edited: $lastEditedTimestamp" -NoNewline -ForegroundColor Gray
-    Write-Host "    www.AIIT.support" -ForegroundColor Gray
+    
+    # Copyright Line (Centered) - Reusing variable
+    Write-Host (" " * $padCopyright) -NoNewline
+    Write-Host "$FGCyan$CopyrightLine$Reset"
+    
     Write-Host ""
     Write-Host $SeparatorLine
 
