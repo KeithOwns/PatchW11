@@ -1194,6 +1194,7 @@ function Invoke-ApplySecuritySettings {
 
     $validInput = $false
     while (-not $validInput) {
+        # FIX: ReadKey must be INSIDE the loop to prevent infinite looping on invalid keys
         $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 
         # Check for Enter (13)
