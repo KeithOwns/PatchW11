@@ -92,9 +92,11 @@ $Char_EmDash      = [char]0x2014 # — (Em Dash)
 # Color Guide Characters
 $Char_BallotCheck     = [char]0x2611 # ☑
 $Char_CrossMark       = [char]::ConvertFromUtf32(0x274C) # ❌
+$Char_CrossMarkButton = [char]0x274E # ❎ (Originally $Char_XSquare)
 $Char_Square          = [char]0x2B1B # ⬛
 $Char_WhiteCheck      = [char]0x2705 # ✅
 $Char_XSquare         = [char]0x274E # ❎
+$Char_NoEntry         = [char]::ConvertFromUtf32(0x26D4) # 🚫
 
 # ANSI Escape Sequences
 $Esc = [char]0x1B
@@ -148,10 +150,9 @@ function Write-StatusIcon {
         Write-Host "     $FGDarkCyan$Char_BallotCheck $Reset" -NoNewline
         Write-Host " " -NoNewline
     } else {
-        # Disabled: Cross Mark with DarkRed text on Default BG
+        # Disabled: Cross Mark Button (❎) with DarkRed text on Default BG
         # Indented by 5 spaces
-        # Removed background color and trailing space inside the string
-        Write-Host "     $FGDarkRed$Char_CrossMark$Reset" -NoNewline
+        Write-Host "     $FGDarkRed$Char_CrossMarkButton$Reset" -NoNewline
         Write-Host " " -NoNewline
     }
 }
@@ -880,14 +881,17 @@ function Show-SecuritySummary {
         # 3. Empty Line
         Write-Host ""
         
-        # 4. Status Text: "All security features enabled" (Centered)
-        $text2 = "All security features enabled"
+        # 4. Status Text 1: "All security features are enabled" (Centered)
+        # UPDATED: Added "are" to text
+        $text2 = "All security features are enabled"
         $pad2 = [math]::Max(0, [math]::Floor((60 - $text2.Length) / 2))
         # Reduce padding slightly to account for the checkmark width
         $pad2 = [math]::Max(0, $pad2 - 2) 
         Write-Host (" " * $pad2) -NoNewline
-        # ADDED: Checkmark icon
+        # Checkmark icon
         Write-Host "$FGGreen$Char_WhiteCheck $text2$Reset"
+        
+        # REMOVED: "0 disabled security features found" line as requested
         
         # 5. Double Separator (Equals)
         Write-Host $DoubleSeparatorLine
@@ -918,11 +922,13 @@ function Show-SecuritySummary {
         # 3. Empty Line
         Write-Host ""
         
-        # 4. Status Text: "X Disabled" (Centered)
+        # 4. Status Text: "⚠  X disabled security features found" (Centered)
         if ($disabled -eq 1) {
-            $text2 = "1 disabled security feature found"
+            # Added extra space after $Char_Warn
+            $text2 = "$Char_Warn  1 disabled security feature found"
         } else {
-            $text2 = "$disabled disabled security features found"
+            # Added extra space after $Char_Warn
+            $text2 = "$Char_Warn  $disabled disabled security features found"
         }
 
         $pad2 = [math]::Max(0, [math]::Floor((60 - $text2.Length) / 2))
@@ -934,8 +940,14 @@ function Show-SecuritySummary {
     }
 
     if ($critical -gt 0) {
-        # This line might appear outside the box, intended for the critical count summary
-        Write-Host "  $FGYellow$Char_Warn $critical Critical" -ForegroundColor Red
+        # UPDATED: Critical summary format and color as requested
+        if ($critical -eq 1) {
+            # Singular case handling
+            Write-Host "  $Char_Warn  $critical Critical security feature is disabled" -ForegroundColor Red
+        } else {
+            # Plural case matching the request
+            Write-Host "  $Char_Warn  $critical Critical security features are disabled" -ForegroundColor Red
+        }
     } 
     # Removed empty else block logic that printed empty line or separator again
 }
@@ -980,7 +992,14 @@ function Enable-RealTimeProtection {
 }
 
 function Enable-TamperProtection {
-    Write-Host "  Requires Manual Enablement (Windows Security UI)" -ForegroundColor Yellow
+    # UPDATED: Specific formatting as requested
+    Write-Host "     $FGDarkRed$Char_CrossMark Tamper protection NOT ENABLED$Reset"
+    
+    # Mixed color output for the warning line
+    Write-Host " $Char_Bell Requires Manual Enablement (" -NoNewline -ForegroundColor Yellow
+    Write-Host "Windows Security $Char_Shield " -NoNewline -ForegroundColor DarkCyan
+    Write-Host ")   $Char_Bell" -ForegroundColor Yellow
+    
     return $false
 }
 
@@ -1091,6 +1110,7 @@ function Enable-FirewallProfile {
 function Apply-SecuritySettings {
     $settingsApplied = 0
     $settingsFailed = 0
+    $failedNames = @()
     $disabledChecks = $script:SecurityChecks | Where-Object { !$_.IsEnabled }
 
     foreach ($check in $disabledChecks) {
@@ -1115,11 +1135,25 @@ function Apply-SecuritySettings {
             "Private network firewall" { $result = Enable-FirewallProfile -ProfileName "Private" }
             "Public network firewall" { $result = Enable-FirewallProfile -ProfileName "Public" }
         }
-        if ($result) { $settingsApplied++ } else { $settingsFailed++ }
+        if ($result) { 
+            $settingsApplied++ 
+        } else { 
+            $settingsFailed++ 
+            $failedNames += $check.Name
+        }
     }
 
-    if ($settingsApplied -gt 0) { Write-Host "    ✓ $settingsApplied settings applied" -ForegroundColor Green }
-    if ($settingsFailed -gt 0) { Write-Host "    ✗ $settingsFailed settings failed" -ForegroundColor Yellow }
+    if ($settingsApplied -gt 0) { Write-Host "    ✓ ENABLED" -ForegroundColor Green }
+    
+    if ($failedNames.Count -gt 0) {
+        foreach ($name in $failedNames) {
+            # UPDATED: Skip Tamper protection in summary as it has its own alert now
+            if ($name -ne "Tamper protection") {
+                # Changed icon to No Entry (🚫) and confirmed Red color
+                Write-Host "    $FGRed$Char_NoEntry $name$Reset"
+            }
+        }
+    }
 }
 
 function Restart-WindowsSecurity {
@@ -1154,25 +1188,44 @@ function Invoke-ApplySecuritySettings {
     Write-Host "Spacebar" -NoNewline -ForegroundColor Yellow
     Write-Host " to Exit without applying settings" -ForegroundColor White
 
-    $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-    Write-Host "" # Newline after key press
+    Write-Host "  Press " -NoNewline -ForegroundColor White
+    Write-Host "Esc" -NoNewline -ForegroundColor Yellow
+    Write-Host " to Close" -ForegroundColor White
 
-    # Check for Enter (13)
-    if ($key.VirtualKeyCode -eq 13) {
-        Write-Host "`n  $FGGreen$Char_WhiteCheck Applying recommended security settings...$Reset"
-        Write-Host $SeparatorLine
-        Apply-SecuritySettings
+    $validInput = $false
+    while (-not $validInput) {
+        $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+
+        # Check for Enter (13)
+        if ($key.VirtualKeyCode -eq 13) {
+            $validInput = $true
+            Write-Host "" # Newline
+            
+            Write-Host "`n  $FGGreen$Char_WhiteCheck Applying recommended security settings...$Reset"
+            Write-Host $SeparatorLine
+            Apply-SecuritySettings
+            
+            # Restart Windows Security right after applying settings
+            Restart-WindowsSecurity -Quiet
+            
+            Write-Host "`n" -NoNewline
+            Write-Host $SeparatorLine
+            Write-Host "  $FGGreen$Char_WhiteCheck Settings applied successfully!$Reset"
+            Write-Host $SeparatorLine
         
-        # Restart Windows Security right after applying settings
-        Restart-WindowsSecurity -Quiet
-        
-        Write-Host "`n" -NoNewline
-        Write-Host $SeparatorLine
-        Write-Host "  $FGGreen$Char_WhiteCheck Settings applied successfully!$Reset"
-        Write-Host $SeparatorLine
-    } else {
-        # Any other key (including Spacebar) treated as No/Exit
-        Write-Host "`n  - Exiting without applying settings" -ForegroundColor Gray
+        # Check for Spacebar
+        } elseif ($key.Character -eq ' ') {
+            $validInput = $true
+            Write-Host "" # Newline
+            Write-Host "`n  - Exiting without applying settings" -ForegroundColor Gray
+            
+        # Check for Esc (27)
+        } elseif ($key.VirtualKeyCode -eq 27) {
+            Write-Host "" # Newline
+            Write-Host "`n  Exiting script..." -ForegroundColor Gray
+            exit
+        }
+        # Loop continues for any other key
     }
 }
 
@@ -1250,45 +1303,60 @@ try {
     Write-Host "Spacebar" -NoNewline -ForegroundColor Yellow
     Write-Host " to Quit" -ForegroundColor White
 
-    $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-    Write-Host ""
+    # Line 3: "  Press " (White) + "Esc" (Yellow) + " to Close" (White)
+    Write-Host "  Press " -NoNewline -ForegroundColor White
+    Write-Host "Esc" -NoNewline -ForegroundColor Yellow
+    Write-Host " to Close" -ForegroundColor White
 
-    # UPDATED: Key check for Enter (VirtualKeyCode 13)
-    if ($key.VirtualKeyCode -eq 13) {
-        Restart-WindowsSecurity
-        Write-Host "  Starting quick scan..." -ForegroundColor Cyan
-        try { 
-            Start-MpScan -ScanType QuickScan -ErrorAction Stop
-            Write-Host "  $FGGreen$Char_WhiteCheck Quick scan completed$Reset"
-            
-            # --- MOVED: THREAT STATUS CHECK ---
-            if ($script:RealTimeProtectionEnabled) {
-                Write-Host ""
-                Get-ScanInformation
+    $validInput = $false
+    while (-not $validInput) {
+        # FIX: ReadKey must be INSIDE the loop to prevent infinite looping on invalid keys
+        $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+
+        # UPDATED: Key check for Enter (VirtualKeyCode 13)
+        if ($key.VirtualKeyCode -eq 13) {
+            $validInput = $true # Ensure loop exits after selection
+            Restart-WindowsSecurity
+            Write-Host "  Starting quick scan..." -ForegroundColor Cyan
+            try { 
+                Start-MpScan -ScanType QuickScan -ErrorAction Stop
+                Write-Host "  $FGGreen$Char_WhiteCheck Quick scan completed$Reset"
                 
-                # Check global status from scan
-                if ($script:ScanStatusAllGreen) {
-                    Write-Host "     $FGGreen No current threats$Reset"
+                # --- MOVED: THREAT STATUS CHECK ---
+                if ($script:RealTimeProtectionEnabled) {
+                    Write-Host ""
+                    Get-ScanInformation
+                    
+                    # Check global status from scan
+                    if ($script:ScanStatusAllGreen) {
+                        Write-Host "     $FGGreen No current threats$Reset"
+                    }
                 }
-            }
-            # ----------------------------------
+                # ----------------------------------
 
-        } catch { Write-Host "  Error: $_" }
-    } elseif ($key.Character -eq ' ') {
-        Write-Host "  Quitting..." -ForegroundColor Gray
-        # Removed Restart-WindowsSecurity from here as requested
+            } catch { Write-Host "  Error: $_" }
+        } elseif ($key.Character -eq ' ' -or $key.VirtualKeyCode -eq 27) {
+            $validInput = $true
+            Write-Host "" # Newline
+            if ($key.VirtualKeyCode -eq 27) {
+                 Write-Host "  Closing..." -ForegroundColor Gray
+                 exit
+            } else {
+                 Write-Host "  Quitting..." -ForegroundColor Gray
+            }
+        }
     }
 
     # Footer
     Write-Host "`n" -NoNewline
-    Write-Host $SeparatorLine
+    # Changed to DarkBlue Em Dash line as requested
+    Write-Host $DoubleSeparatorLine
     
     # Copyright Line (Centered) - Reusing variable
     Write-Host (" " * $padCopyright) -NoNewline
     Write-Host "$FGCyan$CopyrightLine$Reset"
     
-    Write-Host ""
-    Write-Host $SeparatorLine
+    # Removed trailing empty line and second separator
 
 } catch {
     Write-Host "`n[ERROR] $($_.Exception.Message)" -ForegroundColor Red
