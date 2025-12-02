@@ -90,11 +90,11 @@ $Char_Desktop     = [char]::ConvertFromUtf32(0x1F5A5) # 🖥️
 $Char_EmDash      = [char]0x2014 # — (Em Dash)
 
 # Color Guide Characters
-$Char_BallotCheck = [char]0x2611 # ☑
-$Char_Square      = [char]0x2B1B # ⬛
-$Char_WhiteCheck  = [char]0x2705 # ✅
-$Char_XSquare     = [char]0x274E # ❎
-$Char_NoEntry     = [char]::ConvertFromUtf32(0x1F6AB) # 🚫
+$Char_BallotCheck     = [char]0x2611 # ☑
+$Char_CrossMark       = [char]::ConvertFromUtf32(0x274C) # ❌
+$Char_Square          = [char]0x2B1B # ⬛
+$Char_WhiteCheck      = [char]0x2705 # ✅
+$Char_XSquare         = [char]0x274E # ❎
 
 # ANSI Escape Sequences
 $Esc = [char]0x1B
@@ -121,6 +121,7 @@ $BGDarkGray = "$Esc[100m$FGBlack" # DarkGray BG
 $SeparatorLine = "$FGDarkGray" + ("-" * 60) + "$Reset"
 
 # Double Separator (CHANGED: Equals signs to Em Dashes per request)
+# Using $FGBlue (ANSI 34) which is standard Dark Blue
 $DoubleSeparatorLine = "$FGBlue" + ([string]$Char_EmDash * 60) + "$Reset"
 
 # Em Dash Separator (Already defined, but redundant now that DoubleSeparator uses Em Dashes)
@@ -147,9 +148,10 @@ function Write-StatusIcon {
         Write-Host "     $FGDarkCyan$Char_BallotCheck $Reset" -NoNewline
         Write-Host " " -NoNewline
     } else {
-        # Disabled: DarkGray square
+        # Disabled: Cross Mark with DarkRed text on Default BG
         # Indented by 5 spaces
-        Write-Host "     $BGDarkGray$Char_Square $Reset" -NoNewline
+        # Removed background color and trailing space inside the string
+        Write-Host "     $FGDarkRed$Char_CrossMark$Reset" -NoNewline
         Write-Host " " -NoNewline
     }
 }
@@ -428,8 +430,13 @@ function Get-DefenderStatus {
 function Get-AccountProtection {
     param()
     
-    # Header: "  👤 Account protection"
-    Write-SectionHeader "Account protection" $Char_Person
+    # MANUAL HEADER FORMATTING (Matched to 'Virus & threat protection')
+    $Title = "Account protection "
+    $Icon = $Char_Person
+    $IconColor = $FGDarkCyan
+    $Spaces = "  "
+    
+    Write-Host "$Spaces$IconColor$Icon $FGWhite$Title$Reset"
     
     $helloConfigured = $false
     try {
@@ -478,8 +485,13 @@ function Get-AccountProtection {
 function Get-FirewallStatus {
     param()
     
-    # Header: "  📡 Firewall & network protection"
-    Write-SectionHeader "Firewall & network protection" $Char_Satellite
+    # MANUAL HEADER FORMATTING (Matched to previous sections)
+    $Title = "Firewall & network protection"
+    $Icon = $Char_Satellite
+    $IconColor = $FGDarkCyan
+    $Spaces = "  "
+    
+    Write-Host "$Spaces$IconColor$Icon $FGWhite$Title$Reset"
     
     $activeNetworks = @{}
     try {
@@ -571,8 +583,13 @@ function Get-FirewallStatus {
 function Get-ReputationProtection {
     param()
 
-    # CHANGED: Added leading space to title
-    Write-SectionHeader " App & browser control" $Char_CardIndex
+    # MANUAL HEADER FORMATTING (Matched to previous sections)
+    $Title = " App & browser control"
+    $Icon = $Char_CardIndex
+    $IconColor = $FGDarkCyan
+    $Spaces = "  "
+    
+    Write-Host "$Spaces$IconColor$Icon $FGWhite$Title$Reset"
     
     $preferences = $null
     if ($script:RealTimeProtectionEnabled) {
@@ -697,10 +714,13 @@ function Get-EdgePUABlockDownloadsEnabled {
 function Get-CoreIsolationStatus {
     param()
     
-    # CHANGED: Header Title from "Core isolation" to "Device security"
-    # Use $Char_Desktop (🖥️) icon
-    # Added leading space to title for double spacing alignment
-    Write-SectionHeader " Device security" $Char_Desktop
+    # MANUAL HEADER FORMATTING (Matched to previous sections)
+    $Title = " Device security"
+    $Icon = $Char_Desktop
+    $IconColor = $FGDarkCyan
+    $Spaces = "  "
+    
+    Write-Host "$Spaces$IconColor$Icon $FGWhite$Title$Reset"
     
     $memIntegrity = Get-RegValue -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" -Name "Enabled" -DefaultValue 0
     $enabled = $memIntegrity -eq 1
@@ -773,7 +793,13 @@ function Get-ScanInformation {
     $script:ScanStatusAllGreen = $allGreen
 
     if (!$allGreen) {
-        Write-SectionHeader "Current threats" $Char_Warn
+        # MANUAL HEADER FORMATTING (Matched to previous sections)
+        $Title = "Current threats"
+        $Icon = $Char_Warn
+        $IconColor = $FGDarkCyan
+        $Spaces = "  "
+        
+        Write-Host "$Spaces$IconColor$Icon $FGWhite$Title$Reset"
 
         if ($quickScanTime) {
             # CHANGED: Text color to Gray
@@ -878,31 +904,37 @@ function Show-SecuritySummary {
         Write-Host $SeparatorLine
 
     } else {
-        # Mixed state (Old behavior)
-        # Separator (Hyphens -)
-        Write-Host $SeparatorLine
+        # Mixed state (Disabled features found)
         
-        Write-Host "  $FGCyan SECURITY FEATURES$Reset"
+        # 1. Em Dash Separator
+        Write-Host $EmDashLine
         
-        Write-Host "   " -NoNewline
-        # Removed Checkmark Icon
-        Write-Host "$enabled Enabled" -NoNewline -ForegroundColor Green
+        # 2. Header Text: "Windows Security features report:" (Centered)
+        $text1 = "Windows Security features report:"
+        $pad1 = [math]::Max(0, [math]::Floor((60 - $text1.Length) / 2))
+        Write-Host (" " * $pad1) -NoNewline
+        Write-Host $text1 -ForegroundColor Cyan
         
-        Write-Host "   " -NoNewline
-        # Removed Crossmark Icon
-        Write-Host "$disabled Disabled" -NoNewline -ForegroundColor DarkRed
+        # 3. Empty Line
+        Write-Host ""
         
-        if ($script:ScanStatusAllGreen -and $script:RealTimeProtectionEnabled) {
-            Write-Host "" # New line
-            Write-Host "  Current threats: " -NoNewline -ForegroundColor White
-            Write-Host "None" -ForegroundColor DarkCyan
+        # 4. Status Text: "X Disabled" (Centered)
+        if ($disabled -eq 1) {
+            $text2 = "1 disabled security feature found"
+        } else {
+            $text2 = "$disabled disabled security features found"
         }
+
+        $pad2 = [math]::Max(0, [math]::Floor((60 - $text2.Length) / 2))
+        Write-Host (" " * $pad2) -NoNewline
+        Write-Host $text2 -ForegroundColor Red
         
-        # Separator (Hyphens -)
-        Write-Host $SeparatorLine
+        # 5. Double Separator (Em Dash)
+        Write-Host $DoubleSeparatorLine
     }
 
     if ($critical -gt 0) {
+        # This line might appear outside the box, intended for the critical count summary
         Write-Host "  $FGYellow$Char_Warn $critical Critical" -ForegroundColor Red
     } 
     # Removed empty else block logic that printed empty line or separator again
@@ -1108,45 +1140,25 @@ function Invoke-ApplySecuritySettings {
     if ($disabledChecks.Count -eq 0) { return }
 
     Write-Host "`n" -NoNewline
-    Write-Host $SeparatorLine
-    Write-Host "  APPLY RECOMMENDED SETTINGS" -ForegroundColor Yellow
-    Write-Host $SeparatorLine
-    Write-Host "  Found " -NoNewline -ForegroundColor White
-    Write-Host "$($disabledChecks.Count)" -NoNewline -ForegroundColor Yellow
-    Write-Host " disabled security feature(s)" -ForegroundColor White
+    # REMOVED: Header block "APPLY RECOMMENDED SETTINGS" and separators as requested
+
     Write-Host "  Would you like to apply recommended settings?" -ForegroundColor Cyan
 
-    # Interactive Menu
-    $selectedOption = 0 # 0 = Yes, 1 = No
-    $menuTop = [Console]::CursorTop
-    $choiceMade = $false
-    $oldCursorVisible = [Console]::CursorVisible
-    [Console]::CursorVisible = $false
+    # UPDATED: Interactive selection to match footer style
+    Write-Host ""
+    Write-Host "  Press " -NoNewline -ForegroundColor White
+    Write-Host "Enter" -NoNewline -ForegroundColor Yellow
+    Write-Host " to Apply recommended settings" -ForegroundColor White
 
-    while (!$choiceMade) {
-        try { [Console]::SetCursorPosition(0, $menuTop) } catch { }
-        $prefix1 = "  [ ]"; $prefix2 = "  [ ]"
-        if ($selectedOption -eq 0) { $prefix1 = "  [*]" } else { $prefix2 = "  [*]" }
-        $clearLine = " " * ([Console]::WindowWidth - 50)
+    Write-Host "  Press " -NoNewline -ForegroundColor White
+    Write-Host "Spacebar" -NoNewline -ForegroundColor Yellow
+    Write-Host " to Exit without applying settings" -ForegroundColor White
 
-        Write-Host "$prefix1 Yes - Apply recommended settings" -NoNewline -ForegroundColor White
-        Write-Host $clearLine
-        try { [Console]::SetCursorPosition(0, $menuTop + 1) } catch { }
-        Write-Host "$prefix2 No - Exit without applying settings" -NoNewline -ForegroundColor White
-        Write-Host $clearLine
+    $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    Write-Host "" # Newline after key press
 
-        $key = [System.Console]::ReadKey($true)
-        switch ($key.Key) {
-            'UpArrow'   { $selectedOption = 0 }
-            'DownArrow' { $selectedOption = 1 }
-            'Enter'     { $choiceMade = $true }
-        }
-    }
-    [Console]::CursorVisible = $oldCursorVisible
-    [Console]::SetCursorPosition(0, $menuTop)
-    Write-Host (" " * [Console]::WindowWidth); [Console]::SetCursorPosition(0, $menuTop + 1); Write-Host (" " * [Console]::WindowWidth); [Console]::SetCursorPosition(0, $menuTop)
-
-    if ($selectedOption -eq 0) {
+    # Check for Enter (13)
+    if ($key.VirtualKeyCode -eq 13) {
         Write-Host "`n  $FGGreen$Char_WhiteCheck Applying recommended security settings...$Reset"
         Write-Host $SeparatorLine
         Apply-SecuritySettings
@@ -1159,6 +1171,7 @@ function Invoke-ApplySecuritySettings {
         Write-Host "  $FGGreen$Char_WhiteCheck Settings applied successfully!$Reset"
         Write-Host $SeparatorLine
     } else {
+        # Any other key (including Spacebar) treated as No/Exit
         Write-Host "`n  - Exiting without applying settings" -ForegroundColor Gray
     }
 }
@@ -1183,7 +1196,8 @@ try {
     # CHANGED: Title text per request
     Write-Host "            $FGCyan——  WINDOWS SECURITY CONFIGURATOR ——$Reset"
     # "Patch-W11 🔄" is ~12 chars. (60-12)/2 = 24 spaces.
-    Write-Host "                        $FGDarkGreen Patch-W11 $Char_Loop$Reset"
+    # CHANGED: "Patch-W11" color from DarkGreen to White per formatting rules
+    Write-Host "                        $FGWhite Patch-W11 $Char_Loop$Reset"
     
     # Copyright Line (Centered)
     $padCopyright = [math]::Max(0, [math]::Floor((60 - $CopyrightLine.Length) / 2))
@@ -1200,20 +1214,15 @@ try {
     Write-Host ""
     
     Get-DefenderStatus
-    Write-Host "" # Added spacer
     
     # MOVED: Get-AccountProtection to be immediately after Get-DefenderStatus
     Get-AccountProtection
-    Write-Host "" # Added spacer
     
     Get-FirewallStatus
-    Write-Host "" # Added spacer
     
     Get-ReputationProtection
-    Write-Host "" # Added spacer
     
     Get-CoreIsolationStatus
-    Write-Host "" # Added spacer
 
     # MOVED: Threat scan logic is now deferred to post-user interaction
     
@@ -1228,9 +1237,7 @@ try {
         Write-Host "HTML Export not fully implemented in this view"
     }
     
-    # Additional Options - RESTORED
-    Write-Host "  $FGYellow ADDITIONAL OPTIONS$Reset"
-    Write-Host $SeparatorLine
+    # REMOVED: "ADDITIONAL OPTIONS" header as requested
     
     # UPDATED: Key instructions per request
     # Line 1: "  Press " (White) + "Enter" (Yellow) + " to Run a quick scan" (White)
