@@ -301,7 +301,6 @@ function Invoke-WinUpdateCheck {
         $desktop = [System.Windows.Automation.AutomationElement]::RootElement
         
         # Find the Settings window
-        # Note: The window name is just "Settings"
         $condition = New-Object System.Windows.Automation.PropertyCondition(
             [System.Windows.Automation.AutomationElement]::NameProperty,
             "Settings"
@@ -317,43 +316,45 @@ function Invoke-WinUpdateCheck {
             return
         }
         
-        Write-Host "  • Looking for 'Check for updates' button..." -ForegroundColor Gray
+        Write-Host "  • Looking for Update buttons..." -ForegroundColor Gray
         
         # Wait a bit more for the page to fully load
         Start-Sleep -Seconds 2
         
-        # Search for the "Check for updates" button
-        $buttonText = "Check for updates"
+        # Prioritized list of buttons to look for
+        $targetButtons = @("Check for updates", "Download & install all")
         $buttonFound = $false
         
-        $buttonCondition = New-Object System.Windows.Automation.PropertyCondition(
-            [System.Windows.Automation.AutomationElement]::NameProperty,
-            $buttonText
-        )
-        
-        $button = $settingsWindow.FindFirst(
-            [System.Windows.Automation.TreeScope]::Descendants,
-            $buttonCondition
-        )
-        
-        if ($button -ne $null) {
-            Write-Host "  • Found button: '$buttonText'" -ForegroundColor Gray
+        foreach ($text in $targetButtons) {
+            $buttonCondition = New-Object System.Windows.Automation.PropertyCondition(
+                [System.Windows.Automation.AutomationElement]::NameProperty,
+                $text
+            )
             
-            # Get the Invoke pattern to click the button
-            $invokePattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+            $button = $settingsWindow.FindFirst(
+                [System.Windows.Automation.TreeScope]::Descendants,
+                $buttonCondition
+            )
             
-            if ($invokePattern -ne $null) {
-                Write-Host "  ✓ Clicking '$buttonText' button..." -ForegroundColor Green
-                $invokePattern.Invoke()
-                Write-Host "  ✓ Successfully clicked the update button!" -ForegroundColor Green
-                $buttonFound = $true
+            if ($button -ne $null) {
+                Write-Host "  • Found button: '$text'" -ForegroundColor Gray
+                
+                # Get the Invoke pattern to click the button
+                $invokePattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+                
+                if ($invokePattern -ne $null) {
+                    Write-Host "  ✓ Clicking '$text' button..." -ForegroundColor Green
+                    $invokePattern.Invoke()
+                    Write-Host "  ✓ Successfully clicked the update button!" -ForegroundColor Green
+                    $buttonFound = $true
+                    break # Stop searching after first successful click
+                }
             }
         }
         
         if (-not $buttonFound) {
-            Write-Host "  ⚠ Could not find the '$buttonText' button." -ForegroundColor Yellow
-            Write-Host "    The button might be hidden, disabled (if updates are managed)," -ForegroundColor Gray
-            Write-Host "    or an update is already in progress." -ForegroundColor Gray
+            Write-Host "  ⚠ Could not find 'Check for updates' or 'Download & install all'." -ForegroundColor Yellow
+            Write-Host "    The buttons might be hidden, disabled, or an update is in progress." -ForegroundColor Gray
         }
         
     } catch {
