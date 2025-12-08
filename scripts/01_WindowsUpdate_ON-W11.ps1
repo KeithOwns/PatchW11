@@ -2,48 +2,90 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-<#
-.SYNOPSIS
-  Checks and sets Windows Update (WU) UX settings and reports before/after.
-.NOTES
-  UX keys can be overridden by policy under HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate
-  Core Isolation and PUA protection checks are handled by WindowsSecurityConfig.ps1
-#>
+# --- Preamble: Formatting Rules & Encoding ---
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$Esc = [char]0x1B
+$Reset = "$Esc[0m"
+$Bold = "$Esc[1m"
 
-# --- New functions adapted from Security Script ---
+# Colors from Rules
+$FGCyan       = "$Esc[96m"
+$FGDarkCyan   = "$Esc[36m"
+$FGDarkBlue   = "$Esc[34m"
+$FGWhite      = "$Esc[97m"
+$FGGray       = "$Esc[37m"
+$FGDarkGray   = "$Esc[90m"
+$FGDarkGreen  = "$Esc[32m"
+$FGDarkRed    = "$Esc[31m"
+$FGDarkYellow = "$Esc[33m"
+$FGYellow     = "$Esc[93m"
+$FGDarkMagenta= "$Esc[35m"
 
-function Write-StatusIcon {
+# Icons
+$Char_EmDash      = [char]0x2014
+$Char_BallotCheck = [char]0x2611 # ☑
+$Char_XSquare     = [char]0x274E # ❎
+$Char_Warn        = [char]0x26A0 # ⚠
+$Char_Finger      = [char]0x261B # ☛
+$Char_Keyboard    = [char]0x2328 # ⌨
+$Char_Loop        = [char]::ConvertFromUtf32(0x1F504)
+$Char_Copyright   = [char]0x00A9
+
+# --- Formatting Helpers ---
+
+function Write-Centered {
     param(
-        [Parameter(Mandatory)]
+        [string]$Text,
+        [int]$Width = 60
+    )
+    # Strip ANSI for length calculation
+    $cleanText = $Text -replace "$Esc\[[0-9;]*m", ""
+    $padLeft = [Math]::Floor(($Width - $cleanText.Length) / 2)
+    if ($padLeft -lt 0) { $padLeft = 0 }
+    
+    Write-Host (" " * $padLeft + $Text)
+}
+
+function Write-LeftAligned {
+    param(
+        [string]$Text,
+        [int]$Indent = 2
+    )
+    # Rule 3 & 4: Left-align with 2 spaces indentation
+    Write-Host (" " * $Indent + $Text)
+}
+
+function Write-Header {
+    param([string]$Title)
+    # Rule 2: Headers remain Center-aligned
+    Write-Centered "$Bold$FGCyan$Char_EmDash$Char_EmDash $Title $Char_EmDash$Char_EmDash$Reset"
+}
+
+function Write-BodyTitle {
+    param([string]$Title)
+    # Rule 3: Body content Left-aligned
+    Write-LeftAligned "$Bold$FGWhite$Char_EmDash$Char_EmDash $Title $Char_EmDash$Char_EmDash$Reset"
+}
+
+function Write-Boundary {
+    param([string]$Color = $FGDarkBlue)
+    Write-Host "$Color$([string]$Char_EmDash * 60)$Reset"
+}
+
+function Get-StatusLine {
+    param(
         [bool]$IsEnabled,
-        
-        [Parameter(Mandatory = $false)]
-        [string]$Severity = "Warning"
+        [string]$Text
     )
     
     if ($IsEnabled) {
-        Write-Host "✓" -NoNewline -ForegroundColor DarkCyan
-        Write-Host " " -NoNewline
+        return "$FGDarkGreen$Char_BallotCheck  $FGDarkCyan$Text$Reset"
     } else {
-        Write-Host " ✗ " -NoNewline -ForegroundColor DarkRed
+        return "$FGDarkRed$Char_XSquare $FGDarkCyan$Text$Reset"
     }
 }
 
-function Write-SectionHeader {
-    param(
-        [Parameter(Mandatory)]
-        [string]$Title,
-        
-        [Parameter(Mandatory = $false)]
-        [string]$Icon = "⚙️"
-    )
-    
-    Write-Host "`n$Icon " -NoNewline -ForegroundColor Cyan
-    Write-Host $Title -ForegroundColor Cyan
-    Write-Host ("─" * 50) -ForegroundColor DarkBlue
-}
-
-# --- Original script functions ---
+# --- Original Registry Logic ---
 
 function Get-RegistryValue {
     param([Parameter(Mandatory)] [string]$Path, [Parameter(Mandatory)] [string]$Name)
@@ -65,67 +107,63 @@ function Set-RegistryDword {
 # Registry Paths
 $WU_UX  = "HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings"
 $WU_POL = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
-$WINLOGON_USER = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" # HKEY_CURRENT_USER
-$WINLOGON_MACHINE = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" # HKEY_LOCAL_MACHINE
+$WINLOGON_USER = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" 
+$WINLOGON_MACHINE = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
 
 function Show-WUStatus {
-    Write-SectionHeader "Windows Update Settings"
+    Write-Header "WINDOWS UPDATE SETTINGS"
+    Write-Boundary $FGDarkBlue
 
-    Write-Host "`n  --- More options ---" -ForegroundColor Cyan
+    Write-Host ""
+    Write-BodyTitle "More options"
     $continuous = Get-RegistryValue -Path $WU_UX -Name "IsContinuousInnovationOptedIn"
-    Write-StatusIcon ($continuous -eq 1) -Severity "Warning"
-    Write-Host "Get latest updates..." -ForegroundColor White
+    Write-LeftAligned (Get-StatusLine ($continuous -eq 1) "Get latest updates as soon as possible")
 
-    Write-Host "`n  --- Advanced options ---" -ForegroundColor Cyan
+    Write-Host ""
+    Write-BodyTitle "Advanced options"
     $mu = Get-RegistryValue -Path $WU_UX  -Name "AllowMUUpdateService"
-    Write-StatusIcon ($mu -eq 1) -Severity "Warning"
-    Write-Host "Receive updates for other Microsoft products" -ForegroundColor White
+    Write-LeftAligned (Get-StatusLine ($mu -eq 1) "Receive updates for other Microsoft products")
 
     $restartNotify = Get-RegistryValue -Path $WU_UX -Name "RestartNotificationsAllowed2"
-    Write-StatusIcon ($restartNotify -eq 1) -Severity "Info"
-    Write-Host "Notify me when a restart is required" -ForegroundColor White
+    Write-LeftAligned (Get-StatusLine ($restartNotify -eq 1) "Notify me when a restart is required")
 
     $ahs = Get-RegistryValue -Path $WU_UX -Name "ActiveHoursStart"
     $ahe = Get-RegistryValue -Path $WU_UX -Name "ActiveHoursEnd"
     if ($ahs -ne $null -and $ahe -ne $null) {
-        Write-Host "   " -NoNewline
-        Write-Host ("Active hours: {0}:00 - {1}:00" -f $ahs,$ahe) -ForegroundColor Gray
+        Write-LeftAligned "$FGGray  Active hours: ${ahs}:00 - ${ahe}:00$Reset"
     } else {
-        Write-Host "   " -NoNewline
-        Write-Host "Active hours: Auto (based on device activity)" -ForegroundColor Gray
+        Write-LeftAligned "$FGGray  Active hours: Auto (based on device activity)$Reset"
     }
     
-    Write-Host "`n  --- Sign-in options ---" -ForegroundColor Cyan
+    Write-Host ""
+    Write-BodyTitle "Sign-in options"
     $restartApps = Get-RegistryValue -Path $WINLOGON_USER -Name "RestartApps"
-    Write-StatusIcon ($restartApps -eq 1) -Severity "Info"
-    Write-Host "Automatically save restartable apps" -ForegroundColor White
+    Write-LeftAligned (Get-StatusLine ($restartApps -eq 1) "Automatically save restartable apps")
     
-    # Updated logic for "Use sign-in info" (ARSO)
+    # Logic for "Use sign-in info" (ARSO)
     $arsoEnabled = $false
     try {
         $UserSID = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
         if ($UserSID) {
             $userArsoPath = "$WINLOGON_MACHINE\UserARSO\$UserSID"
             $optOut = Get-RegistryValue -Path $userArsoPath -Name "OptOut"
-            # Enabled if OptOut exists and is 0
             $arsoEnabled = ($optOut -ne $null -and $optOut -eq 0)
         }
-        Write-StatusIcon $arsoEnabled -Severity "Info"
-        Write-Host "Use sign-in info to finish setup after update" -ForegroundColor White
+        Write-LeftAligned (Get-StatusLine $arsoEnabled "Use sign-in info to finish setup after update")
     } catch {
-        Write-StatusIcon $false -Severity "Info"
-        Write-Host "Use sign-in info to finish setup (Could not check user SID)" -ForegroundColor Gray
+        Write-LeftAligned "$FGDarkRed$Char_XSquare $FGGray Use sign-in info (Check Failed)$Reset"
     }
 
-
-    Write-Host "`n  --- Policy inspection (read-only) ---" -ForegroundColor Cyan
+    Write-Host ""
+    Write-BodyTitle "Policy inspection"
     $pol_mu = Get-RegistryValue -Path $WU_POL -Name "AllowMUUpdateService"
     if ($pol_mu -ne $null) { 
-        Write-Host "   " -NoNewline
-        Write-Host "Policy enforces Microsoft Update: $pol_mu" -ForegroundColor Gray
+        Write-LeftAligned "$FGGray Policy enforces Microsoft Update: $pol_mu$Reset"
     } else { 
-        Write-Host "No policy enforcement detected" -ForegroundColor Gray
+        Write-LeftAligned "$FGGray No policy enforcement detected$Reset"
     }
+    Write-Host ""
+    Write-Boundary $FGDarkGray
 }
 
 function Set-WUSettings {
@@ -139,121 +177,72 @@ function Set-WUSettings {
         
         # Configuring Sign-in options
         try {
-            # 1. Set "Automatically save restartable apps" (in HKCU)
             Set-RegistryDword -Path $WINLOGON_USER -Name "RestartApps" -Value 1
             
-            # 2. Set "Use sign-in info..." (ARSO) using new HKLM logic
             $policyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
             $policyName = "DisableAutomaticRestartSignOn"
             $policyValue = Get-RegistryValue -Path $policyPath -Name $policyName
 
             if ($null -ne $policyValue -and $policyValue -eq 1) {
-                # Policy is blocking this, so we skip
-                # This state will be reflected in the Show-WUStatus check
+                # Policy blocking, skip
             } else {
-                # Policy is not blocking, proceed with soft-set
                 $UserSID = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-                if (-not $UserSID) {
-                    throw "Could not determine current user's SID to set ARSO."
-                }
-                
+                if (-not $UserSID) { throw "Could not determine current user's SID." }
                 $userArsoPath = "$WINLOGON_MACHINE\UserARSO\$UserSID"
-                
-                # Set machine-wide prerequisite
                 Set-RegistryDword -Path $WINLOGON_MACHINE -Name "ARSOUserConsent" -Value 1
-                
-                # Ensure user-specific path exists
                 New-Item -Path $userArsoPath -Force -ErrorAction Stop | Out-Null
-                
-                # Set user's preference (OptOut=0 means Opt-In)
                 Set-RegistryDword -Path $userArsoPath -Name "OptOut" -Value 0
             }
-            
         } catch {
-            Write-Host "`n[ERROR] " -NoNewline -ForegroundColor Red
-            Write-Host "Failed to set user-level sign-in options: $($_.Exception.Message)" -ForegroundColor White
+             Write-LeftAligned "$FGDarkRed$Char_Warn Failed to set user sign-in options$Reset"
         }
     }
     catch {
-        Write-Host "`n[ERROR] " -NoNewline -ForegroundColor Red
-        Write-Host "Error applying settings: $($_.Exception.Message)" -ForegroundColor White
+        Write-LeftAligned "$FGDarkRed$Char_Warn Error applying settings: $($_.Exception.Message)$Reset"
     }
 }
 
 function Invoke-MSStoreUpdateCheck {
-    Write-SectionHeader "Microsoft Store Updates" "🏪"
+    Write-Host ""
+    Write-Header "MICROSOFT STORE UPDATES"
+    Write-Boundary $FGDarkBlue
 
     try {
-        # Load UI Automation assemblies
         Add-Type -AssemblyName UIAutomationClient
         Add-Type -AssemblyName UIAutomationTypes
     } catch {
-        Write-Host "  ⚠ Failed to load UI Automation assemblies." -ForegroundColor Yellow
-        Write-Host "    Cannot proceed with Microsoft Store update check." -ForegroundColor Gray
+        Write-LeftAligned "$FGDarkYellow$Char_Warn Failed to load UI Automation assemblies$Reset"
         return
     }
 
-    Write-Host "`nOpening Microsoft Store to check for app updates" -ForegroundColor Yellow
-    Write-Host "  • Launching Microsoft Store..." -ForegroundColor Gray
-
-    # Open MS Store to Downloads and Updates page
+    Write-LeftAligned "$FGYellow Opening Microsoft Store to check for app updates...$Reset"
     Start-Process "ms-windows-store://downloadsandupdates"
+    Start-Sleep -Seconds 5
 
-    # Wait for the Store app to open and load
-    Write-Host "  • Waiting for Microsoft Store to load (5 sec)..." -ForegroundColor Gray
-    Start-Sleep -Seconds 5 # Increased from 3 to 5 for more reliability
-
-    # Try to find and click the "Get updates" button
     try {
-        # Get the root automation element
         $desktop = [System.Windows.Automation.AutomationElement]::RootElement
-        
-        # Find the Microsoft Store window
-        $condition = New-Object System.Windows.Automation.PropertyCondition(
-            [System.Windows.Automation.AutomationElement]::NameProperty,
-            "Microsoft Store"
-        )
-        
-        $storeWindow = $desktop.FindFirst(
-            [System.Windows.Automation.TreeScope]::Children,
-            $condition
-        )
+        $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, "Microsoft Store")
+        $storeWindow = $desktop.FindFirst([System.Windows.Automation.TreeScope]::Children, $condition)
         
         if ($storeWindow -eq $null) {
-            Write-Host "  ⚠ Could not find Microsoft Store window. Please ensure it's open." -ForegroundColor Yellow
+            Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find Microsoft Store window$Reset"
             return
         }
         
-        Write-Host "  • Looking for 'Get updates' button..." -ForegroundColor Gray
+        Start-Sleep -Seconds 5
         
-        # Wait a bit more for the page to fully load
-        Start-Sleep -Seconds 5 # Increased from 3 to 5 for more reliability
-        
-        # Search for the "Get updates" button
         $buttonTexts = @("Get updates", "Check for updates", "Update all")
         $buttonFound = $false
         
         foreach ($buttonText in $buttonTexts) {
-            $buttonCondition = New-Object System.Windows.Automation.PropertyCondition(
-                [System.Windows.Automation.AutomationElement]::NameProperty,
-                $buttonText
-            )
-            
-            $button = $storeWindow.FindFirst(
-                [System.Windows.Automation.TreeScope]::Descendants,
-                $buttonCondition
-            )
+            $buttonCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $buttonText)
+            $button = $storeWindow.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $buttonCondition)
             
             if ($button -ne $null) {
-                Write-Host "  • Found button: '$buttonText'" -ForegroundColor Gray
-                
-                # Get the Invoke pattern to click the button
                 $invokePattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
-                
                 if ($invokePattern -ne $null) {
-                    Write-Host "  ✓ Clicking '$buttonText' button..." -ForegroundColor Green
                     $invokePattern.Invoke()
-                    Write-Host "  ✓ Successfully clicked the update button!" -ForegroundColor Green
+                    Write-LeftAligned "$FGDarkGreen$Char_BallotCheck Successfully clicked '$buttonText'$Reset"
                     $buttonFound = $true
                     break
                 }
@@ -261,142 +250,105 @@ function Invoke-MSStoreUpdateCheck {
         }
         
         if (-not $buttonFound) {
-            Write-Host "  ⚠ Could not find the update button." -ForegroundColor Yellow
-            Write-Host "    Please manually click 'Get updates' in the Microsoft Store" -ForegroundColor Gray
+            Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find update button$Reset"
         }
         
     } catch {
-        Write-Host "  ⚠ Error during UI automation: $($_.Exception.Message)" -ForegroundColor Yellow
-        Write-Host "    Please manually click 'Get updates' in the Microsoft Store" -ForegroundColor Gray
+        Write-LeftAligned "$FGDarkYellow$Char_Warn UI Automation Error$Reset"
     }
-
-    Write-Host "`n  ℹ️  Verify updates are checking/installing" -ForegroundColor Cyan
+    Write-Boundary $FGDarkGray
 }
 
 function Invoke-WinUpdateCheck {
-    Write-SectionHeader "Windows Update Check" "💻"
+    Write-Host ""
+    Write-Header "WINDOWS UPDATE CHECK"
+    Write-Boundary $FGDarkBlue
 
     try {
-        # Load UI Automation assemblies
         Add-Type -AssemblyName UIAutomationClient
         Add-Type -AssemblyName UIAutomationTypes
     } catch {
-        Write-Host "  ⚠ Failed to load UI Automation assemblies." -ForegroundColor Yellow
-        Write-Host "    Cannot proceed with Windows Update check." -ForegroundColor Gray
+        Write-LeftAligned "$FGDarkYellow$Char_Warn Failed to load UI Automation assemblies$Reset"
         return
     }
 
-    Write-Host "`n  Opening Windows Update settings..." -ForegroundColor Yellow
-    Write-Host "  • Launching Settings..." -ForegroundColor Gray
-
-    # Open MS Settings to the Windows Update page
+    Write-LeftAligned "$FGYellow Opening Windows Update settings...$Reset"
     Start-Process "ms-settings:windowsupdate"
-
-    # Wait for the Settings app to open and load
-    Write-Host "  • Waiting for Settings to load (5 sec)..." -ForegroundColor Gray
     Start-Sleep -Seconds 5
 
     try {
-        # Get the root automation element
         $desktop = [System.Windows.Automation.AutomationElement]::RootElement
-        
-        # Find the Settings window
-        $condition = New-Object System.Windows.Automation.PropertyCondition(
-            [System.Windows.Automation.AutomationElement]::NameProperty,
-            "Settings"
-        )
-        
-        $settingsWindow = $desktop.FindFirst(
-            [System.Windows.Automation.TreeScope]::Children,
-            $condition
-        )
+        $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, "Settings")
+        $settingsWindow = $desktop.FindFirst([System.Windows.Automation.TreeScope]::Children, $condition)
         
         if ($settingsWindow -eq $null) {
-            Write-Host "  ⚠ Could not find Settings window. Please ensure it's open." -ForegroundColor Yellow
+            Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find Settings window$Reset"
             return
         }
         
-        Write-Host "  • Looking for Update buttons..." -ForegroundColor Gray
-        
-        # Wait a bit more for the page to fully load
         Start-Sleep -Seconds 2
         
-        # Prioritized list of buttons to look for
         $targetButtons = @("Check for updates", "Download & install all")
         $buttonFound = $false
         
         foreach ($text in $targetButtons) {
-            $buttonCondition = New-Object System.Windows.Automation.PropertyCondition(
-                [System.Windows.Automation.AutomationElement]::NameProperty,
-                $text
-            )
-            
-            $button = $settingsWindow.FindFirst(
-                [System.Windows.Automation.TreeScope]::Descendants,
-                $buttonCondition
-            )
+            $buttonCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $text)
+            $button = $settingsWindow.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $buttonCondition)
             
             if ($button -ne $null) {
-                Write-Host "  • Found button: '$text'" -ForegroundColor Gray
-                
-                # Get the Invoke pattern to click the button
                 $invokePattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
-                
                 if ($invokePattern -ne $null) {
-                    Write-Host "  ✓ Clicking '$text' button..." -ForegroundColor Green
                     $invokePattern.Invoke()
-                    Write-Host "  ✓ Successfully clicked the update button!" -ForegroundColor Green
+                    Write-LeftAligned "$FGDarkGreen$Char_BallotCheck Successfully clicked '$text'$Reset"
                     $buttonFound = $true
-                    break # Stop searching after first successful click
+                    break
                 }
             }
         }
         
         if (-not $buttonFound) {
-            Write-Host "  ⚠ Could not find 'Check for updates' or 'Download & install all'." -ForegroundColor Yellow
-            Write-Host "    The buttons might be hidden, disabled, or an update is in progress." -ForegroundColor Gray
+             Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find update buttons$Reset"
         }
         
     } catch {
-        Write-Host "  ⚠ Error during UI automation: $($_.Exception.Message)" -ForegroundColor Yellow
-        Write-Host "    Please manually check for updates." -ForegroundColor Gray
+        Write-LeftAligned "$FGDarkYellow$Char_Warn UI Automation Error$Reset"
     }
-
-    Write-Host "`n  ℹ️  Verify updates are checking." -ForegroundColor Cyan
+    Write-Boundary $FGDarkGray
 }
 
 # --- Main ---
 Clear-Host
-Write-Host "`n" -NoNewline
-Write-Host "WINDOWS UPDATE CONFIGURATOR" -ForegroundColor DarkGreen
-Write-Host ("═" * 50) -ForegroundColor DarkBlue
+Write-Host ""
+Write-Header "WINDOWS UPDATE CONFIGURATOR"
+Write-Boundary $FGDarkBlue
 
 Set-WUSettings
 Show-WUStatus
 
 # --- User Prompt ---
-Write-Host "`nNext Steps:" -ForegroundColor Cyan
-Write-Host "  [Enter] Run Update Checks (Store & Windows)" -ForegroundColor Green
-Write-Host "  [Space] Skip" -ForegroundColor Yellow
+Write-Host ""
+# Icons and Colors matched to scriptRULES-W11.ps1
+$prompt = "${FGDarkMagenta}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkMagenta} to Run Checks  |  Press ${FGYellow}$Char_Finger Space${FGDarkMagenta} to Skip$Reset"
+Write-Centered $prompt
 
 do {
     $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 } while ($key.VirtualKeyCode -ne 13 -and $key.Character -ne ' ')
 
 if ($key.VirtualKeyCode -eq 13) { # 13 is Enter
-    # --- Microsoft Store Updates ---
     Invoke-MSStoreUpdateCheck
-
-    # --- Windows Update Check ---
     Invoke-WinUpdateCheck
 } else {
-    Write-Host "`nSkipping update checks." -ForegroundColor Gray
+    Write-Host ""
+    Write-LeftAligned "$FGGray Skipping update checks.$Reset"
 }
 
 # Footer
-Write-Host "`n" -NoNewline
-Write-Host ("─" * 50) -ForegroundColor DarkBlue
+Write-Host ""
 $lastEditedTimestamp = "2025-11-25"
-Write-Host "Last Edited: $lastEditedTimestamp" -NoNewline -ForegroundColor Gray
-Write-Host "    www.AIIT.support" -ForegroundColor Gray
-Write-Host ("─" * 50) -ForegroundColor DarkBlue
+Write-Boundary $FGDarkBlue
+Write-Centered "$FGDarkCyan$Char_Copyright $lastEditedTimestamp, www.AIIT.support$Reset"
+Write-Boundary $FGDarkBlue
+
+# Exit Spacing
+1..5 | ForEach-Object { Write-Host "" }
