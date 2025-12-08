@@ -21,6 +21,7 @@ $Char_XSquare     = [char]0x274E # ❎
 $Char_Finger      = [char]0x261B # ☛
 $Char_Loop        = [char]::ConvertFromUtf32(0x1F504) # 🔄
 $Char_Copyright   = [char]0x00A9
+$Char_Keyboard    = [char]0x2328 # ⌨
 
 # ANSI Colors
 $Esc = [char]0x1B
@@ -501,8 +502,9 @@ if ($AppsToInstall.Count -gt 0) {
 
   # --- CUSTOM PROMPT FORMATTING ---
   Write-Host ""
-  $PromptStr = " $Char_Finger${FGDarkMagenta} Press ${FGYellow}Enter${FGDarkMagenta} to Install missing applications  |  Press ${FGYellow}Spacebar${FGDarkMagenta} to Exit$Reset"
-  $VisibleText = " $Char_Finger Press Enter to Install missing applications  |  Press Spacebar to Exit"
+  # Updated Prompt Format to match RULES
+  $PromptStr = "${FGDarkCyan}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkCyan} to Install missing applications  |  Press ${FGYellow}$Char_Finger Spacebar${FGDarkCyan} to Exit$Reset"
+  $VisibleText = "$Char_Keyboard  Press $Char_Finger Enter to Install missing applications  |  Press $Char_Finger Spacebar to Exit"
   $PromptPadding = [Math]::Max(0, [Math]::Floor((60 - $VisibleText.Length) / 2))
   Write-Host (" " * $PromptPadding + $PromptStr)
 
