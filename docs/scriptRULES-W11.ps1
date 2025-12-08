@@ -78,14 +78,14 @@ function Write-Row {
     param($ColorName, $ANSI, $About, $Type, $Hex, $Rep, $ColorCode)
     
     # Column Width Configuration
-    $CNamePadded = $ColorName.PadRight(11) 
+    $CNamePadded = $ColorName.PadRight(10) 
     $ANSIPadded  = $ANSI.PadRight(7)       
     $AboutPadded = $About.PadRight(7)
     $TypePadded  = $Type.PadRight(9)
     $HexPadded   = $Hex.PadRight(8)
     
     # Output Row
-    Write-Host "   $ColorCode$CNamePadded$Reset $ANSIPadded$AboutPadded$TypePadded$HexPadded$ColorCode$Rep$Reset "
+    Write-Host "  $ColorCode$CNamePadded$Reset $ANSIPadded$AboutPadded$TypePadded$HexPadded$ColorCode$Rep$Reset "
 }
 
 # ============================================================================
@@ -124,7 +124,7 @@ function Show-VisualExamples {
     Write-Output ""
     
     # Table Header
-    Write-Output "   ${FGGray}Text Color  ANSI   About  Type     Hex     Representation$Reset"
+    Write-Output "  ${FGGray}Text Color ANSI   About  Type     Hex     Representation$Reset"
     
     # Table Separator
     Write-Output "$FGDarkGray$([string]$Char_EmDash * 60)$Reset"
@@ -153,8 +153,8 @@ function Show-VisualExamples {
     Write-Row "Magenta"    "\e[95m"  "System" "Error"    "0x26D4" "$Char_NoEntry [ ERROR ]"        $FGMagenta
     
     # Input Rows
-    Write-Row "DarkMagenta" "\e[95m" "Input"  "Info"     "0x2328" "$Char_Keyboard  [ Info ]"        $FGMagenta
-    Write-Row "Yellow"      "\e[93m" "Input"  "Keypress" "0x261B" "$Char_Finger  [Keypress]"       $FGYellow
+    # DarkMagenta row removed
+    Write-Row "Yellow"     "\e[93m"  "Input"  "Keypress" "0x261B" "$Char_Keyboard  [$Char_Finger Keypress]"       $FGYellow
     
     # DarkBlue Separator Line below Yellow Input row
     Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
@@ -198,10 +198,11 @@ if ($ShowRules) {
     # 1. Initial State (Rules Hidden)
     Show-VisualExamples -ShowFormattingRules $false
     
-    # 2. Prompt (DarkMagenta with Yellow highlights)
+    # 2. Prompt (DarkCyan with Yellow highlights)
     Write-Output ""
     # REMOVED leading space to ensure fit (60 chars exactly)
-    $PromptStr = "${FGDarkMagenta}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkMagenta} to Show rules  |  Press ${FGYellow}$Char_Finger Spacebar${FGDarkMagenta} to Close$Reset"
+    # Changed DarkMagenta to DarkCyan as requested
+    $PromptStr = "${FGDarkCyan}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkCyan} to Show rules  |  Press ${FGYellow}$Char_Finger Spacebar${FGDarkCyan} to Close$Reset"
     
     # Calculate centering padding
     # REMOVED leading space to ensure fit (60 chars exactly)
@@ -231,3 +232,5 @@ if ($ShowRules) {
     
     # Script ends naturally here (no exit)
 }
+# Output 5 empty lines before exit (User Requirement)
+1..5 | ForEach-Object { Write-Output "" }
