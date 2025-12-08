@@ -178,9 +178,9 @@ function Show-VisualExamples {
         Write-Output "  ${FGDarkCyan}A. Text Formatting:$Reset"
         Write-Output "  ${FGDarkCyan}   1. Never split whole words over multiple lines.$Reset"
         Write-Output "  ${FGDarkCyan}   2. Header Alignment: Center-align$Reset"
-        Write-Output "  ${FGDarkCyan}   3. Body Alignment: Right-align$Reset"
-        Write-Output "  ${FGDarkCyan}   4. Body Indentation: 2 spaces left & right$Reset"
-        Write-Output "  ${FGDarkCyan}   5. Boundaries composed of (`"—`" * 60)$Reset"
+        Write-Output "  ${FGDarkCyan}   3. Body Alignment: Left-align$Reset"
+        Write-Output "  ${FGDarkCyan}   4. Body Indentation: Minimum of 2 spaces left & right$Reset"
+        Write-Output "  ${FGDarkCyan}   5. Boundaries composed of (`"$Char_EmDash`" * 60)$Reset"
         
         # DarkBlue Separator Line (just below formatting rules)
         Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
@@ -200,10 +200,12 @@ if ($ShowRules) {
     
     # 2. Prompt (DarkMagenta with Yellow highlights)
     Write-Output ""
-    $PromptStr = " ${FGYellow}$Char_Finger${FGDarkMagenta} Press ${FGYellow}Enter${FGDarkMagenta} to Show rules  |  Press ${FGYellow}Spacebar${FGDarkMagenta} to Close$Reset"
+    # REMOVED leading space to ensure fit (60 chars exactly)
+    $PromptStr = "${FGDarkMagenta}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkMagenta} to Show rules  |  Press ${FGYellow}$Char_Finger Spacebar${FGDarkMagenta} to Close$Reset"
     
     # Calculate centering padding
-    $VisibleText = " $Char_Finger Press Enter to Show rules  |  Press Spacebar to Close"
+    # REMOVED leading space to ensure fit (60 chars exactly)
+    $VisibleText = "$Char_Keyboard  Press $Char_Finger Enter to Show rules  |  Press $Char_Finger Spacebar to Close"
     $PromptPadding = [Math]::Floor((60 - $VisibleText.Length) / 2)
     
     Write-Output (" " * $PromptPadding + $PromptStr)
