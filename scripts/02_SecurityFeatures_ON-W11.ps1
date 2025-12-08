@@ -59,6 +59,10 @@ param(
     [string]$SaveAsBaseline
 )
 
+# --- [USER PREFERENCE] CLEAR SCREEN START ---
+Clear-Host
+# --------------------------------------------
+
 # --- FIX: Reset environment settings to prevent conflicts from previous scripts ---
 Set-StrictMode -Off
 $ErrorActionPreference = 'Continue'
@@ -118,7 +122,7 @@ $FGDarkBlue = "$Esc[34m" # Updated for Lines
 $FGBlack = "$Esc[30m"
 $FGDarkGray = "$Esc[90m"
 $FGDarkGreen = "$Esc[32m" # Added for Enabled State
-$FGDarkMagenta = "$Esc[95m" # Added for Input Info
+$FGDarkMagenta = "$Esc[35m" # Added for Input Info
 
 # Background Styles
 $BGTeal     = "$Esc[46m$FGBlack"  # DarkCyan BG
@@ -146,6 +150,23 @@ function Write-Centered {
     if ($padLeft -lt 0) { $padLeft = 0 }
     
     Write-Host (" " * $padLeft + $Text)
+}
+
+function Write-Header {
+    param([string]$Title)
+    $Width = 60
+    $Pad = [Math]::Max(0, [Math]::Floor(($Width - $Title.Length) / 2))
+    $Line = "$FGDarkBlue$([string]$Char_EmDash * $Width)$Reset"
+    
+    # Print Top Line, Centered Title, Sub-Header
+    Write-Host $Line
+    Write-Host (" " * $Pad + "$Bold$FGCyan$Title$Reset")
+    
+    $SubText = "Patch-W11 "
+    $SubIcon = "$Char_Loop"
+    $SubPad = [Math]::Max(0, [Math]::Floor(($Width - ($SubText.Length + 1)) / 2)) # Approx width fix for icon
+    Write-Host (" " * $SubPad + "$Bold$FGDarkCyan$SubText$FGBlue$SubIcon$Reset")
+    Write-Host $Line
 }
 
 function Write-StatusIcon {
@@ -1239,7 +1260,7 @@ function Invoke-ApplySecuritySettings {
 
     # UPDATED: Interactive selection to match updated Keypress style
     Write-Host ""
-    $prompt = "${FGDarkMagenta}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkMagenta} to Apply Settings  |  Press ${FGYellow}$Char_Finger Space${FGDarkMagenta} to Exit$Reset"
+    $prompt = "${FGDarkCyan}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkCyan} to Apply Settings  |  Press ${FGYellow}$Char_Finger Spacebar${FGDarkCyan} to Exit$Reset"
     Write-Centered $prompt
 
     $validInput = $false
@@ -1286,33 +1307,15 @@ try {
     } else {
         $LastEditYear = (Get-Date).Year
     }
-    $CopyrightLine = "© $LastEditYear, www.AIIT.support. All Rights Reserved."
-
-    Clear-Host
-    Write-Host "`n" -NoNewline
-    
-    # Updated Main Title Block
-    # 60 chars. "——  WINDOWS SECURITY CONFIGURATOR ——" is roughly 36 chars.
-    # (60 - 36) / 2 = 12 spaces padding.
-    # CHANGED: Title text to Cyan (Header)
-    Write-Host "            $FGCyan——  WINDOWS SECURITY CONFIGURATOR ——$Reset"
-    # "Patch-W11 🔄" is ~12 chars. (60-12)/2 = 24 spaces.
-    # CHANGED: "Patch-W11" color to DarkCyan (Sub-Header) and Blue Loop
-    Write-Host "                        $FGDarkCyan Patch-W11 $FGBlue$Char_Loop$Reset"
-    
-    # Copyright Line (Centered) - DarkCyan (Footer)
-    $padCopyright = [math]::Max(0, [math]::Floor((60 - $CopyrightLine.Length) / 2))
-    Write-Host (" " * $padCopyright) -NoNewline
-    Write-Host "$FGDarkCyan$CopyrightLine$Reset"
-
-    # DarkBlue Separator
-    Write-Host $DoubleSeparatorLine
+    $CopyrightLine = "$Char_Copyright $LastEditYear, www.AIIT.support. All Rights Reserved."
 
     # Run checks with extra spacing added
     
     # Added two extra empty lines here as requested
     Write-Host ""
     Write-Host ""
+    
+    Write-Header "WINDOWS SECURITY CONFIGURATOR"
     
     Get-DefenderStatus
     
@@ -1342,7 +1345,8 @@ try {
     # REMOVED: "ADDITIONAL OPTIONS" header as requested
     
     # UPDATED: Key instructions per updated Keypress style
-    $prompt = "${FGDarkMagenta}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkMagenta} to Quick Scan  |  Press ${FGYellow}$Char_Finger Space${FGDarkMagenta} to Close$Reset"
+    Write-Host ""
+    $prompt = "${FGDarkCyan}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkCyan} to Quick Scan  |  Press ${FGYellow}$Char_Finger Spacebar${FGDarkCyan} to Close$Reset"
     Write-Centered $prompt
 
     $validInput = $false
@@ -1387,6 +1391,7 @@ try {
     Write-Host $DoubleSeparatorLine
     
     # Copyright Line (Centered) - Reusing variable - DarkCyan
+    $padCopyright = [math]::Max(0, [math]::Floor((60 - $CopyrightLine.Length) / 2))
     Write-Host (" " * $padCopyright) -NoNewline
     Write-Host "$FGDarkCyan$CopyrightLine$Reset"
     
