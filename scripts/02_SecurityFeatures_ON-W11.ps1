@@ -550,13 +550,14 @@ function Get-FirewallStatus {
             $isUnsecured = ($authMethod -match "Open|None|Unsecured" -and $authMethod -notmatch "WPA2-Open")
             
             if ($isUnsecured) {
-                # Critical Warning
-                Write-StatusIcon $false -Severity "Critical"
+                # UPDATED: Demoted from Critical to Warning as requested
+                Write-StatusIcon $false -Severity "Warning"
                 # CHANGED: Text color to Gray
                 Write-Host "Wi-Fi Security" -NoNewline -ForegroundColor Gray
                 Write-Host " (UNSECURED: $authMethod)" -ForegroundColor Red
                 
-                Add-SecurityCheck -Category "Firewall & Network Protection" -Name "Wi-Fi Security" -IsEnabled $false -Severity "Critical" `
+                # UPDATED: Severity set to Warning
+                Add-SecurityCheck -Category "Firewall & Network Protection" -Name "Wi-Fi Security" -IsEnabled $false -Severity "Warning" `
                     -Remediation "Connect to a secured network (WPA2/WPA3)" `
                     -Details "Current Wi-Fi network ($authMethod) is unsecured"
             } else {
@@ -781,6 +782,10 @@ function Get-ScanInformation {
     $status = Get-MpComputerStatus
     $now = Get-Date
 
+    # ADDED: Check for active threats
+    $threats = @(Get-MpThreat -ErrorAction SilentlyContinue)
+    $script:ActiveThreatCount = $threats.Count
+
     $quickScanColor = "Red"; $quickScanTime = $status.QuickScanStartTime
     if ($quickScanTime) { if (($now - $quickScanTime).Days -lt 7) { $quickScanColor = "Green" } elseif (($now - $quickScanTime).Days -lt 30) { $quickScanColor = "Yellow" } }
 
@@ -790,55 +795,63 @@ function Get-ScanInformation {
     $lastUpdateColor = "Red"; $lastUpdatedTime = $status.AntivirusSignatureLastUpdated
     if ($lastUpdatedTime) { if (($now - $lastUpdatedTime).Days -lt 7) { $lastUpdateColor = "Green" } }
 
-    $allGreen = ($quickScanColor -eq "Green") -and ($fullScanColor -eq "Green") -and ($lastUpdateColor -eq "Green")
+    # UPDATED: AllGreen logic now includes Threat Count check
+    $allGreen = ($quickScanColor -eq "Green") -and ($fullScanColor -eq "Green") -and ($lastUpdateColor -eq "Green") -and ($script:ActiveThreatCount -eq 0)
     $script:ScanStatusAllGreen = $allGreen
 
-    if (!$allGreen) {
-        # MANUAL HEADER FORMATTING (Matched to previous sections)
-        $Title = "Current threats"
-        $Icon = $Char_Warn
-        $IconColor = $FGDarkCyan
-        $Spaces = "  "
-        
-        Write-Host "$Spaces$IconColor$Icon $FGWhite$Title$Reset"
+    # MANUAL HEADER FORMATTING (Matched to previous sections)
+    $Title = "Scan history"
+    $Icon = $Char_Loop
+    $IconColor = $FGDarkCyan
+    $Spaces = "  "
+    
+    Write-Host "$Spaces$IconColor$Icon $FGWhite$Title$Reset"
 
-        if ($quickScanTime) {
-            # CHANGED: Text color to Gray
-            Write-Host "  Last quick scan:      " -NoNewline -ForegroundColor Gray
-            Write-Host "$($quickScanTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor $quickScanColor
-        } else {
-            # CHANGED: Text color to Gray
-            Write-Host "  Last quick scan:      " -NoNewline -ForegroundColor Gray
-            Write-Host "-" -ForegroundColor DarkGray
-        }
-
-        if ($fullScanTime) {
-            # CHANGED: Text color to Gray
-            Write-Host "  Last full scan:       " -NoNewline -ForegroundColor Gray
-            Write-Host "$($fullScanTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor $fullScanColor
-        } else {
-            # CHANGED: Text color to Gray
-            Write-Host "  Last full scan:       " -NoNewline -ForegroundColor Gray
-            Write-Host "-" -ForegroundColor DarkGray
-        }
-
-        # CHANGED: Text color to Gray
-        Write-Host "  Signature version:    " -NoNewline -ForegroundColor Gray
-        Write-Host $status.AntivirusSignatureVersion -ForegroundColor White
-
-        if ($lastUpdatedTime) {
-            # CHANGED: Text color to Gray
-            Write-Host "  Last updated:         " -NoNewline -ForegroundColor Gray
-            Write-Host "$($lastUpdatedTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor $lastUpdateColor
-        } else {
-            # CHANGED: Text color to Gray
-            Write-Host "  Last updated:         " -NoNewline -ForegroundColor Gray
-            Write-Host "-" -ForegroundColor DarkGray
-        }
-        
-        # ADDED: Separator line at the end of this conditional section
-        Write-Host $SeparatorLine
+    # ADDED: Threats found line
+    if ($script:ActiveThreatCount -gt 0) {
+        Write-Host "  Threats found:        " -NoNewline -ForegroundColor Gray
+        Write-Host "$script:ActiveThreatCount" -ForegroundColor Red
+    } else {
+        Write-Host "  Threats found:        " -NoNewline -ForegroundColor Gray
+        Write-Host "0" -ForegroundColor Green
     }
+
+    if ($quickScanTime) {
+        # CHANGED: Text color to Gray
+        Write-Host "  Last quick scan:      " -NoNewline -ForegroundColor Gray
+        Write-Host "$($quickScanTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor $quickScanColor
+    } else {
+        # CHANGED: Text color to Gray
+        Write-Host "  Last quick scan:      " -NoNewline -ForegroundColor Gray
+        Write-Host "-" -ForegroundColor DarkGray
+    }
+
+    if ($fullScanTime) {
+        # CHANGED: Text color to Gray
+        Write-Host "  Last full scan:       " -NoNewline -ForegroundColor Gray
+        Write-Host "$($fullScanTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor $fullScanColor
+    } else {
+        # CHANGED: Text color to Gray
+        Write-Host "  Last full scan:       " -NoNewline -ForegroundColor Gray
+        Write-Host "-" -ForegroundColor DarkGray
+    }
+
+    # CHANGED: Text color to Gray
+    Write-Host "  Signature version:    " -NoNewline -ForegroundColor Gray
+    Write-Host $status.AntivirusSignatureVersion -ForegroundColor White
+
+    if ($lastUpdatedTime) {
+        # CHANGED: Text color to Gray
+        Write-Host "  Last updated:         " -NoNewline -ForegroundColor Gray
+        Write-Host "$($lastUpdatedTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor $lastUpdateColor
+    } else {
+        # CHANGED: Text color to Gray
+        Write-Host "  Last updated:         " -NoNewline -ForegroundColor Gray
+        Write-Host "-" -ForegroundColor DarkGray
+    }
+    
+    # ADDED: Separator line at the end of the section
+    Write-Host $SeparatorLine
 }
 
 function Get-SecurityScore {
@@ -896,12 +909,18 @@ function Show-SecuritySummary {
         # 5. Double Separator (Equals)
         Write-Host $DoubleSeparatorLine
         
-        # 6. Threat Text: "No current threats" (Centered) - Only if applicable
+        # 6. Threat Text: "No current threats" OR "Threats found" (Centered)
         if ($script:ScanStatusAllGreen -and $script:RealTimeProtectionEnabled) {
             $text3 = "No current threats"
             $pad3 = [math]::Max(0, [math]::Floor((60 - $text3.Length) / 2))
             Write-Host (" " * $pad3) -NoNewline
             Write-Host "$FGGreen$text3$Reset"
+        } elseif ($script:ActiveThreatCount -gt 0) {
+            # ADDED: Threat warning even if features are enabled
+            $text3 = "$Char_Warn  $script:ActiveThreatCount threats found"
+            $pad3 = [math]::Max(0, [math]::Floor((60 - $text3.Length) / 2))
+            Write-Host (" " * $pad3) -NoNewline
+            Write-Host "$text3" -ForegroundColor Red
         }
         
         # 7. Bottom Standard Separator (Hyphens)
@@ -923,7 +942,16 @@ function Show-SecuritySummary {
         Write-Host ""
         
         # 4. Status Text: "⚠  X disabled security features found" (Centered)
-        if ($disabled -eq 1) {
+        $msgColor = "Red"
+        
+        # UPDATED: Check specifically for Wi-Fi Security failure
+        $wiFiCheck = $script:SecurityChecks | Where-Object { $_.Name -eq "Wi-Fi Security" -and !$_.IsEnabled }
+        
+        if ($disabled -eq 1 -and $null -ne $wiFiCheck) {
+            # Special message for Unsecure Wi-Fi
+            $text2 = "$Char_Warn  Connected to unsecure Wi-Fi"
+            $msgColor = "DarkYellow"
+        } elseif ($disabled -eq 1) {
             # Added extra space after $Char_Warn
             $text2 = "$Char_Warn  1 disabled security feature found"
         } else {
@@ -933,8 +961,17 @@ function Show-SecuritySummary {
 
         $pad2 = [math]::Max(0, [math]::Floor((60 - $text2.Length) / 2))
         Write-Host (" " * $pad2) -NoNewline
-        Write-Host $text2 -ForegroundColor Red
+        Write-Host $text2 -ForegroundColor $msgColor
         
+        # ADDED: Threat warning for mixed state
+        if ($script:ActiveThreatCount -gt 0) {
+            Write-Host ""
+            $textThreats = "$Char_Warn  $script:ActiveThreatCount threats found"
+            $padThreats = [math]::Max(0, [math]::Floor((60 - $textThreats.Length) / 2))
+            Write-Host (" " * $padThreats) -NoNewline
+            Write-Host "$textThreats" -ForegroundColor Red
+        }
+
         # 5. Double Separator (Em Dash)
         Write-Host $DoubleSeparatorLine
     }
@@ -998,6 +1035,18 @@ function Enable-TamperProtection {
     # Mixed color output for the warning line
     Write-Host " $Char_Bell Requires Manual Enablement (" -NoNewline -ForegroundColor Yellow
     Write-Host "Windows Security $Char_Shield " -NoNewline -ForegroundColor DarkCyan
+    Write-Host ")   $Char_Bell" -ForegroundColor Yellow
+    
+    return $false
+}
+
+function Enable-WiFiSecurity {
+    # ADDED: Specific formatting for VPN requirement
+    Write-Host "     $FGDarkRed$Char_CrossMark Wi-Fi Security NOT ENABLED$Reset"
+    
+    # Mixed color output for the warning line
+    Write-Host " $Char_Bell Requires Manual Enablement (" -NoNewline -ForegroundColor Yellow
+    Write-Host "Enable VPN $Char_Shield " -NoNewline -ForegroundColor DarkCyan
     Write-Host ")   $Char_Bell" -ForegroundColor Yellow
     
     return $false
@@ -1107,6 +1156,14 @@ function Enable-FirewallProfile {
     } catch { return $false }
 }
 
+function Restart-SecurityApp {
+    Write-Host "`n  Restarting Windows Security app..." -ForegroundColor Cyan
+    # Kill the process
+    Get-Process "SecHealthUI" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    # Restart via URI
+    Start-Process "windowsdefender:" 
+}
+
 function Apply-SecuritySettings {
     $settingsApplied = 0
     $settingsFailed = 0
@@ -1134,6 +1191,8 @@ function Apply-SecuritySettings {
             "Domain network firewall" { $result = Enable-FirewallProfile -ProfileName "Domain" }
             "Private network firewall" { $result = Enable-FirewallProfile -ProfileName "Private" }
             "Public network firewall" { $result = Enable-FirewallProfile -ProfileName "Public" }
+            # ADDED: Wi-Fi Security case
+            "Wi-Fi Security" { $result = Enable-WiFiSecurity }
         }
         if ($result) { 
             $settingsApplied++ 
@@ -1147,25 +1206,13 @@ function Apply-SecuritySettings {
     
     if ($failedNames.Count -gt 0) {
         foreach ($name in $failedNames) {
-            # UPDATED: Skip Tamper protection in summary as it has its own alert now
-            if ($name -ne "Tamper protection") {
+            # UPDATED: Skip Tamper protection and Wi-Fi Security in summary as they have their own alerts
+            if ($name -ne "Tamper protection" -and $name -ne "Wi-Fi Security") {
                 # Changed icon to No Entry (🚫) and confirmed Red color
                 Write-Host "    $FGRed$Char_NoEntry $name$Reset"
             }
         }
     }
-}
-
-function Restart-WindowsSecurity {
-    param([switch]$Quiet)
-    if (-not $Quiet) { Write-Host "  Restarting Windows Security..." -ForegroundColor Cyan }
-    $processNames = @('SecurityHealthSystray', 'SecHealthUI')
-    foreach ($p in $processNames) {
-        try { Get-Process -Name $p -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue } catch {}
-    }
-    Start-Sleep -Seconds 1
-    try { Start-Process "windowsdefender:" -ErrorAction Stop; if (-not $Quiet) { Write-Host "  $FGGreen$Char_WhiteCheck Windows Security restarted$Reset" } }
-    catch { if (-not $Quiet) { Write-Host "  $FGYellow$Char_Warn Failed to restart$Reset" } }
 }
 
 function Invoke-ApplySecuritySettings {
@@ -1184,13 +1231,10 @@ function Invoke-ApplySecuritySettings {
     Write-Host "Enter" -NoNewline -ForegroundColor Yellow
     Write-Host " to Apply recommended settings" -ForegroundColor White
 
+    # UPDATED: Spacebar is now the primary exit/skip option, replacing Esc functionality
     Write-Host "  Press " -NoNewline -ForegroundColor White
     Write-Host "Spacebar" -NoNewline -ForegroundColor Yellow
     Write-Host " to Exit without applying settings" -ForegroundColor White
-
-    Write-Host "  Press " -NoNewline -ForegroundColor White
-    Write-Host "Esc" -NoNewline -ForegroundColor Yellow
-    Write-Host " to Close" -ForegroundColor White
 
     $validInput = $false
     while (-not $validInput) {
@@ -1206,26 +1250,23 @@ function Invoke-ApplySecuritySettings {
             Write-Host $SeparatorLine
             Apply-SecuritySettings
             
-            # Restart Windows Security right after applying settings
-            Restart-WindowsSecurity -Quiet
+            # --- NEW: Restart Security App after applying settings ---
+            Restart-SecurityApp
+            # ---------------------------------------------------------
             
             Write-Host "`n" -NoNewline
             Write-Host $SeparatorLine
             Write-Host "  $FGGreen$Char_WhiteCheck Settings applied successfully!$Reset"
             Write-Host $SeparatorLine
         
-        # Check for Spacebar
+        # Check for Spacebar (Skip)
         } elseif ($key.Character -eq ' ') {
             $validInput = $true
             Write-Host "" # Newline
             Write-Host "`n  - Exiting without applying settings" -ForegroundColor Gray
             
-        # Check for Esc (27)
-        } elseif ($key.VirtualKeyCode -eq 27) {
-            Write-Host "" # Newline
-            Write-Host "`n  Exiting script..." -ForegroundColor Gray
-            exit
         }
+        # REMOVED: Esc check (27)
         # Loop continues for any other key
     }
 }
@@ -1278,7 +1319,8 @@ try {
     
     Get-CoreIsolationStatus
 
-    # MOVED: Threat scan logic is now deferred to post-user interaction
+    # ADDED: Show Scan History immediately on load (Suggestion #1)
+    Get-ScanInformation
     
     Show-SecuritySummary
     Invoke-ApplySecuritySettings
@@ -1299,14 +1341,10 @@ try {
     Write-Host "Enter" -NoNewline -ForegroundColor Yellow
     Write-Host " to Run a quick scan" -ForegroundColor White
     
-    # Line 2: "  Press " (White) + "Spacebar" (Yellow) + " to Quit" (White)
+    # Line 2: "  Press " (White) + "Spacebar" (Yellow) + " to Close" (White)
+    # Replaces the old Esc line
     Write-Host "  Press " -NoNewline -ForegroundColor White
     Write-Host "Spacebar" -NoNewline -ForegroundColor Yellow
-    Write-Host " to Quit" -ForegroundColor White
-
-    # Line 3: "  Press " (White) + "Esc" (Yellow) + " to Close" (White)
-    Write-Host "  Press " -NoNewline -ForegroundColor White
-    Write-Host "Esc" -NoNewline -ForegroundColor Yellow
     Write-Host " to Close" -ForegroundColor White
 
     $validInput = $false
@@ -1317,7 +1355,7 @@ try {
         # UPDATED: Key check for Enter (VirtualKeyCode 13)
         if ($key.VirtualKeyCode -eq 13) {
             $validInput = $true # Ensure loop exits after selection
-            Restart-WindowsSecurity
+            # REMOVED: Open-EdgeSecuritySettings (Reverted opening logic)
             Write-Host "  Starting quick scan..." -ForegroundColor Cyan
             try { 
                 Start-MpScan -ScanType QuickScan -ErrorAction Stop
@@ -1336,16 +1374,13 @@ try {
                 # ----------------------------------
 
             } catch { Write-Host "  Error: $_" }
-        } elseif ($key.Character -eq ' ' -or $key.VirtualKeyCode -eq 27) {
+        } elseif ($key.Character -eq ' ') { # Spacebar
             $validInput = $true
             Write-Host "" # Newline
-            if ($key.VirtualKeyCode -eq 27) {
-                 Write-Host "  Closing..." -ForegroundColor Gray
-                 exit
-            } else {
-                 Write-Host "  Quitting..." -ForegroundColor Gray
-            }
+            Write-Host "  Closing..." -ForegroundColor Gray
+            # exit will happen after footer
         }
+        # REMOVED: Esc check (27)
     }
 
     # Footer
@@ -1358,6 +1393,9 @@ try {
     Write-Host "$FGCyan$CopyrightLine$Reset"
     
     # Removed trailing empty line and second separator
+    
+    # FINAL: 5 Empty Lines before exit per standards
+    Write-Host "`n`n`n`n`n"
 
 } catch {
     Write-Host "`n[ERROR] $($_.Exception.Message)" -ForegroundColor Red
