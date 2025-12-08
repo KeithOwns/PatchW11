@@ -3,38 +3,104 @@ param(
     [ValidateSet('Desktop','Laptop','Auto')]
     [string]$DeviceType = 'Auto'
 )
+
+# --- [USER PREFERENCE] CLEAR SCREEN START ---
+Clear-Host
+# --------------------------------------------
+
+# --- STYLE & FORMATTING CONFIGURATION (From scriptRULES-W11.ps1) ---
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+# Unicode Characters
+$Char_EmDash      = [char]0x2014
+$Char_HeavyCheck  = [char]0x2714 # ✔
+$Char_Cross       = [char]0x2718
+$Char_Warn        = [char]0x26A0 # ⚠
+$Char_BallotCheck = [char]0x2611 # ☑
+$Char_XSquare     = [char]0x274E # ❎
+$Char_Finger      = [char]0x261B # ☛
+$Char_Loop        = [char]::ConvertFromUtf32(0x1F504) # 🔄
+$Char_Copyright   = [char]0x00A9
+
+# ANSI Colors
+$Esc = [char]0x1B
+$Reset = "$Esc[0m"
+$Bold = "$Esc[1m"
+$FGCyan       = "$Esc[96m"  # Header Title
+$FGBlue       = "$Esc[94m"  # Icons
+$FGDarkBlue   = "$Esc[34m"  # Boundaries
+$FGGreen      = "$Esc[92m"  # Success
+$FGRed        = "$Esc[91m"  # Failure
+$FGMagenta    = "$Esc[95m"  # Error
+$FGYellow     = "$Esc[93m"  # Keys
+$FGDarkCyan   = "$Esc[36m"  # Script Text
+$FGWhite      = "$Esc[97m"  # Body Title
+$FGGray       = "$Esc[37m"  # System Text
+$FGDarkGray   = "$Esc[90m"  # Body Boundary
+$FGDarkGreen  = "$Esc[32m"  # Enabled
+$FGDarkYellow = "$Esc[33m"  # Warning
+$FGDarkMagenta= "$Esc[35m"  # Input Info
+
+# Helper Functions for Formatting
+function Write-Header {
+    param($Title)
+    $Width = 60
+    $Pad = [Math]::Max(0, [Math]::Floor(($Width - $Title.Length) / 2))
+    $Line = "$FGDarkBlue$([string]$Char_EmDash * $Width)$Reset"
+    
+    # Print Top Line, Centered Title, Sub-Header
+    Write-Host $Line
+    Write-Host (" " * $Pad + "$Bold$FGCyan$Title$Reset")
+    
+    $SubText = "Patch-W11 "
+    $SubIcon = "$Char_Loop"
+    $SubFull = $SubText + $SubIcon
+    $SubPad = [Math]::Max(0, [Math]::Floor(($Width - ($SubText.Length + 1)) / 2)) # Approx width fix for icon
+    Write-Host (" " * $SubPad + "$Bold$FGDarkCyan$SubText$FGBlue$SubIcon$Reset")
+    Write-Host $Line
+}
+
+function Write-SectionBoundary {
+    Write-Host "$FGDarkGray$([string]$Char_EmDash * 60)$Reset"
+}
+
+function Write-ScriptText {
+    param($Text, $Color=$FGDarkCyan)
+    Write-Host "  $Color$Text$Reset"
+}
+
+# -------------------------------------------------------------------
+
 <#
 .SYNOPSIS
   Installs a list of required applications in a guided process.
-
-.DESCRIPTION
-  Verifies prerequisite apps if defined. Then installs remaining software.
-  Fork: Desktop vs Laptop (AirMedia for Laptop).
-
-.NOTES
-  Requires winget >= 1.5.0.
 #>
 
 function Write-Stamp {
   param([string]$Tag = "")
   $who = "Keith — GPT-5 Thinking"
   $ts  = Get-Date -Format "yyyy-MM-dd HH:mm:ss zzz"
-  if ([string]::IsNullOrWhiteSpace($Tag)) { Write-Host "[$ts] $who" -ForegroundColor DarkGray }
-  else { Write-Host "[$ts] $who — $Tag" -ForegroundColor DarkGray }
+  # Using System Text (Gray) for stamps
+  if ([string]::IsNullOrWhiteSpace($Tag)) { Write-Host "  $FGGray[$ts] $who$Reset" }
+  else { Write-Host "  $FGGray[$ts] $who — $Tag$Reset" }
 }
 
 # --- PREREQUISITE CHECK ---
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-  Write-Warning "This script must be run with Administrator privileges."
-  Write-Host "Right-click the script and select 'Run as administrator'."
-  Write-Stamp "Admin check failed"
-  return
+    Write-Host "  $FGRed$Char_Cross This script must be run with Administrator privileges.$Reset"
+    Write-Host "  $FGDarkCyan Right-click the script and select 'Run as administrator'.$Reset"
+    Write-Stamp "Admin check failed"
+    return
 }
 
+# --- START HEADER ---
+Write-Header " —— APP INSTALLER —— "
+
 # --- [NEW] CONFIGURE DEFENDER SETTINGS ---
-Write-Host "`n--------------------------------------------------"
-Write-Host "Attempting to disable 'Controlled Folder Access'..." -ForegroundColor Yellow
+Write-Host ""
+Write-ScriptText "Attempting to disable 'Controlled Folder Access'..."
 Write-Stamp "Disabling Controlled Folder Access"
+
 try {
     # Disable Controlled Folder Access
     Set-MpPreference -EnableControlledFolderAccess Disabled -ErrorAction Stop
@@ -42,20 +108,20 @@ try {
     # Verify the setting
     $newPrefs = Get-MpPreference
     if ($newPrefs.EnableControlledFolderAccess -eq 0) {
-        Write-Host "[SUCCESS] Controlled Folder Access has been disabled." -ForegroundColor Green
+        Write-Host "  $FGGreen$Char_HeavyCheck [Success] Controlled Folder Access has been disabled.$Reset"
         Write-Stamp "Controlled Folder Access disabled"
     } else {
-        Write-Warning "[FAILURE] Failed to disable Controlled Folder Access."
-        Write-Warning "The current state is: $($newPrefs.EnableControlledFolderAccess). This may be set by Group Policy."
+        Write-Host "  $FGRed$Char_Cross [Failure] Failed to disable Controlled Folder Access.$Reset"
+        Write-ScriptText "The current state is: $($newPrefs.EnableControlledFolderAccess). This may be set by Group Policy." $FGDarkYellow
         Write-Stamp "Failed to disable Controlled Folder Access (State: $($newPrefs.EnableControlledFolderAccess))"
     }
 } catch {
-    Write-Warning "`n[ERROR] An error occurred while trying to disable Controlled Folder Access:"
-    Write-Warning $_.Exception.Message
-    Write-Warning "This is often because the setting is managed by Group Policy (GPO) or Intune."
+    Write-Host "  $FGMagenta$Char_Warn [ERROR] An error occurred while trying to disable Controlled Folder Access:$Reset"
+    Write-ScriptText $_.Exception.Message $FGMagenta
+    Write-ScriptText "This is often because the setting is managed by Group Policy (GPO) or Intune." $FGDarkYellow
     Write-Stamp "Error disabling Controlled Folder Access: $($_.Exception.Message)"
 }
-Write-Host "--------------------------------------------------`n"
+Write-SectionBoundary
 # --- [END NEW] ---
 
 # --- SETTINGS ---
@@ -63,7 +129,7 @@ $MinWingetVersion = [version]'1.5.0'
 $StartTime = Get-Date
 $TranscriptLogPath = Join-Path -Path ([Environment]::GetFolderPath('Desktop')) -ChildPath ("App-Install-Transcript-{0:yyyyMMdd-HHmmss}.txt" -f $StartTime)
 $SummaryLogPath    = Join-Path -Path ([Environment]::GetFolderPath('Desktop')) -ChildPath ("App-Install-Summary-{0:yyyyMMdd-HHmmss}.txt" -f $StartTime)
-Start-Transcript -Path $TranscriptLogPath -Append
+Start-Transcript -Path $TranscriptLogPath -Append | Out-Null
 $Summary = [System.Collections.Generic.List[object]]::new()
 $SoftSuccessCodes = @(0,3010,-2145124332,0x8024001E,0x8024200B)
 $ScriptExitCode = 0
@@ -92,7 +158,7 @@ function Add-Tls {
   if ([Net.ServicePointManager]::SecurityProtocol -notmatch 'Tls12|Tls13') {
     try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13 }
     catch {
-      Write-Verbose "Could not enable TLS 1.3, using TLS 1.2 only: $($_.Exception.Message)"
+      Write-Host "  $FGDarkYellow Could not enable TLS 1.3, using TLS 1.2 only: $($_.Exception.Message)$Reset"
       [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     }
   }
@@ -117,7 +183,7 @@ function Get-File {
   [CmdletBinding()]
   param([Parameter(Mandatory)][string]$Url,[Parameter(Mandatory)][string]$Out)
   Add-Tls
-  Write-Host "Downloading from: $Url" -ForegroundColor Gray
+  Write-ScriptText "Downloading from: $Url" $FGGray
   for ($i=1; $i -le 3; $i++) {
     try {
       $ProgressPreference = 'SilentlyContinue'
@@ -125,11 +191,11 @@ function Get-File {
       $ProgressPreference = 'Continue'
       if (Test-Path $Out) {
         $fileSize = (Get-Item $Out).Length
-        Write-Host "Download complete: $([math]::Round($fileSize/1MB,2)) MB" -ForegroundColor Gray
+        Write-ScriptText "Download complete: $([math]::Round($fileSize/1MB,2)) MB" $FGGray
       }
       return
     } catch {
-      if ($i -lt 3) { Write-Warning "Download attempt $i failed. Retrying in $($i*10) seconds..."; Start-Sleep -Seconds (10*$i) }
+      if ($i -lt 3) { Write-ScriptText "Download attempt $i failed. Retrying in $($i*10) seconds..." $FGDarkYellow; Start-Sleep -Seconds (10*$i) }
       else { throw "Download failed after 3 attempts: $($_.Exception.Message)" }
     }
   }
@@ -150,24 +216,24 @@ function Get-MsiUrlFromLanding {
 
 function Ensure-WingetSources {
   try {
-    Write-Host "Checking Windows Package Manager sources..." -ForegroundColor Yellow
+    Write-ScriptText "Checking Windows Package Manager sources..." $FGDarkYellow
     $null = Start-Process -FilePath "winget.exe" -ArgumentList @("source","update","--disable-interactivity") -Wait -PassThru -ErrorAction SilentlyContinue
     $en = Start-Process -FilePath "winget.exe" -ArgumentList @("source","enable","msstore","--disable-interactivity") -Wait -PassThru -ErrorAction SilentlyContinue
     if ($en -and $en.ExitCode -ne 0) {
       Start-Process -FilePath "winget.exe" -ArgumentList @("source","add","-n","msstore","-a","https://storeedgefd.dsx.mp.microsoft.com/v9.0","--disable-interactivity") -Wait -ErrorAction SilentlyContinue | Out-Null
     }
-    Write-Host "Winget sources ready." -ForegroundColor Green
-  } catch { Write-Warning "Winget source prep failed: $($_.Exception.Message)" }
+    Write-Host "  $FGGreen$Char_HeavyCheck Winget sources ready.$Reset"
+  } catch { Write-ScriptText "Winget source prep failed: $($_.Exception.Message)" $FGDarkYellow }
 }
 
 function Assert-WingetVersion {
   param([Parameter(Mandatory)][version]$Minimum)
   $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
-  if (-not $winget) { Write-Error "Windows Package Manager (winget) not installed. Install 'App Installer' from Microsoft Store, then re-run."; return $false }
+  if (-not $winget) { Write-Host "  $FGRed$Char_Cross Windows Package Manager (winget) not installed.$Reset"; return $false }
   try { $raw = & winget --version 2>$null; $verText = ($raw | Select-Object -First 1).ToString().Trim().TrimStart('v','V'); $ver = [version]$verText }
-  catch { Write-Error "Unable to determine winget version."; return $false }
-  if ($ver -lt $Minimum) { Write-Error "winget $verText detected. Version $($Minimum.ToString()) or newer required."; return $false }
-  Write-Host "winget $verText OK." -ForegroundColor Green
+  catch { Write-Host "  $FGRed$Char_Cross Unable to determine winget version.$Reset"; return $false }
+  if ($ver -lt $Minimum) { Write-Host "  $FGRed$Char_Cross winget $verText detected. Version $($Minimum.ToString()) or newer required.$Reset"; return $false }
+  Write-Host "  $FGGreen$Char_HeavyCheck winget $verText OK.$Reset"
   return $true
 }
 
@@ -208,31 +274,19 @@ function Test-AppInstalled {
   return $false
 }
 
-function Invoke-UserWinget {
-  param([Parameter(Mandatory)][string[]]$Args)
-  $psi = New-Object System.Diagnostics.ProcessStartInfo
-  $psi.FileName = "powershell.exe"
-  $psi.Arguments = "-NoLogo -NoProfile -Command `"winget $($Args -join ' ')`""
-  $psi.UseShellExecute = $true
-  $psi.Verb = "Open"
-  try { [Diagnostics.Process]::Start($psi) | Out-Null; return 0 }
-  catch { Write-Warning "Failed to start user-context winget: $($_.Exception.Message)"; return 1 }
-}
-
-# --- PATCH: resilient winget install ---
 function Install-WithWingetRetry {
   param([Parameter(Mandatory)][hashtable]$App)
   $base = @("install","--id",$App.WingetId,"-e","--accept-package-agreements","--accept-source-agreements","--silent","--disable-interactivity")
   if ($App.ContainsKey('Source') -and $App.Source) { $base += @("--source",$App.Source) }
 
-  # Attempt 1: honor provided scope if present
+  # Attempt 1
   $args1 = @($base)
   if ($App.ContainsKey('WingetScope') -and $App.WingetScope) { $args1 += @("--scope",$App.WingetScope) }
   $p1 = Start-Process -FilePath "winget.exe" -ArgumentList $args1 -Wait -PassThru -ErrorAction SilentlyContinue
   $c1 = if ($null -ne $p1) { $p1.ExitCode } else { 0 }
   if ($c1 -eq 0) { return 0 }
 
-  # Attempt 2: refresh sources and flip scope
+  # Attempt 2
   try { Start-Process winget.exe -ArgumentList @("source","update","--disable-interactivity") -Wait -ErrorAction SilentlyContinue | Out-Null } catch {}
   $alt = if ($App.ContainsKey('WingetScope') -and $App.WingetScope -eq 'Machine') { 'User' } else { 'Machine' }
   $args2 = @($base) + @("--scope",$alt)
@@ -240,7 +294,7 @@ function Install-WithWingetRetry {
   $c2 = if ($null -ne $p2) { $p2.ExitCode } else { 0 }
   if ($c2 -eq 0) { return 0 }
 
-  Write-Warning ("winget failed for {0}. Codes: first={1}, second={2}. Consider manual installer." -f $App.AppName,$c1,$c2)
+  Write-ScriptText "winget failed for {0}. Codes: first={1}, second={2}." -f $App.AppName,$c1,$c2 $FGDarkYellow
   return $c2
 }
 
@@ -254,29 +308,13 @@ function Wait-UntilDetected {
   return $false
 }
 
-function Get-PendingReboot {
-  $keys = @(
-    'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending',
-    'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired',
-    'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager'
-  )
-  foreach ($k in $keys) {
-    if (Test-Path $k) {
-      if ($k -like '*Session Manager*') {
-        try { if ((Get-ItemProperty $k -Name PendingFileRenameOperations -ErrorAction SilentlyContinue)) { return $true } } catch {}
-      } else { return $true }
-    }
-  }
-  return $false
-}
-
-# --- UPDATED: uses Install-WithWingetRetry for WINGET case ---
 function Invoke-GenericInstall {
   [CmdletBinding()]
   param([Parameter(Mandatory)][hashtable]$App)
   $AppName = $App.AppName
   $InstallerType = $App.Type
-  Write-Host "--- Starting installation for '$AppName' (Type: $InstallerType) ---" -ForegroundColor Cyan
+  Write-Host ""
+  Write-ScriptText "Starting installation for '$AppName' (Type: $InstallerType)..." $FGDarkCyan
   $tmp = $null; $exit = $null
 
   try {
@@ -285,19 +323,11 @@ function Invoke-GenericInstall {
         $installerFilePath = $null
         if ($App.ContainsKey('InstallerPath') -and (Test-Path -Path $App.InstallerPath)) {
           $installerFilePath = $App.InstallerPath
-          Write-Host "Using network/local installer at: $installerFilePath"
+          Write-ScriptText "Using network/local installer at: $installerFilePath" $FGGray
         } else {
-          Write-Host "Local installer not found or specified. Attempting download..."
-          
-          # --- FIX START ---
-          # Explicitly initialize $urls as an array
+          Write-ScriptText "Local installer not found. Attempting download..." $FGGray
           $urls = @()
-          if ($App.ContainsKey('Urls')) {
-            $urls = @($App.Urls) # Ensure $App.Urls (even if single) is treated as an array
-          } elseif ($App.ContainsKey('Url')) {
-            $urls = @($App.Url) # Ensure $App.Url is treated as an array
-          }
-          # --- FIX END ---
+          if ($App.ContainsKey('Urls')) { $urls = @($App.Urls) } elseif ($App.ContainsKey('Url')) { $urls = @($App.Url) }
           
           if ($urls.Count -eq 0) { throw "No URL(s) specified for MSI." }
           $resolvedUrl = $null
@@ -307,11 +337,11 @@ function Invoke-GenericInstall {
               break
             } catch { continue }
           }
-          if (-not $resolvedUrl) { throw "Could not resolve a valid MSI URL from provided Urls." }
+          if (-not $resolvedUrl) { throw "Could not resolve a valid MSI URL." }
           $InstallerFileName = if ($App.ContainsKey('OutFileName')) { $App.OutFileName } else { [IO.Path]::GetFileName(([Uri]$resolvedUrl).AbsolutePath) }
           if ([string]::IsNullOrWhiteSpace($InstallerFileName)) { $InstallerFileName = "$($App.AppName.Replace(' ','-'))-installer.msi" }
           $installerFilePath = Join-Path -Path $env:TEMP -ChildPath $InstallerFileName
-          Write-Host "Downloading '$AppName' MSI..."
+          Write-ScriptText "Downloading '$AppName' MSI..." $FGGray
           Get-File -Url $resolvedUrl -Out $installerFilePath
           $tmp = $installerFilePath
         }
@@ -324,18 +354,15 @@ function Invoke-GenericInstall {
         $installerFilePath = $null
         if ($App.ContainsKey('InstallerPath') -and (Test-Path -Path $App.InstallerPath)) {
           $installerFilePath = $App.InstallerPath
-          Write-Host "Using network/local installer at: $installerFilePath"
-        }
-        elseif ($App.ContainsKey('Url')) {
-          Write-Host "Local installer not found or specified. Attempting download..."
+        } elseif ($App.ContainsKey('Url')) {
           $InstallerFileName = if ($App.ContainsKey('OutFileName')) { $App.OutFileName } else { [IO.Path]::GetFileName(([Uri]$App.Url).AbsolutePath) }
           if ([string]::IsNullOrWhiteSpace($InstallerFileName) -or $InstallerFileName -eq "files") { $InstallerFileName = "$($App.AppName.Replace(' ','-'))-installer.exe" }
           $installerFilePath = Join-Path -Path $env:TEMP -ChildPath $InstallerFileName
-          Write-Host "Downloading '$AppName' EXE..."
+          Write-ScriptText "Downloading '$AppName' EXE..." $FGGray
           Get-File -Url $App.Url -Out $installerFilePath
           $tmp = $installerFilePath
         }
-        else { throw "No valid InstallerPath or Url found for '$($App.AppName)'." }
+        else { throw "No valid InstallerPath or Url found." }
         $args = if ($App.ContainsKey('SilentArgs')) { $App.SilentArgs } else { "/quiet /norestart" }
         $p = Start-Process -FilePath $installerFilePath -ArgumentList $args -Wait -PassThru -ErrorAction Stop
         $exit = $p.ExitCode
@@ -344,18 +371,18 @@ function Invoke-GenericInstall {
         $exit = Install-WithWingetRetry -App $App
       }
       "BUILTIN" {
-        Write-Host "'$AppName' is built into Windows. Skipping install." -ForegroundColor Green
+        Write-Host "  $FGGreen$Char_HeavyCheck '$AppName' is built into Windows.$Reset"
         $exit = 0
       }
       Default { throw "Unknown installer Type: $InstallerType" }
     }
 
-    if ($null -eq $exit) { Write-Warning "Installer returned no exit code; treating as soft success for '$AppName'."; $exit = 0 }
+    if ($null -eq $exit) { Write-ScriptText "Installer returned no exit code; treating as soft success." $FGDarkYellow; $exit = 0 }
     if ($SoftSuccessCodes -notcontains $exit) { throw "Installer returned non-success exit code: $exit" }
   }
   catch {
-    Write-Host "ERROR: '$AppName' installation encountered an error." -ForegroundColor Red
-    Write-Host "Details: $($_.Exception.Message)"
+    Write-Host "  $FGMagenta$Char_Warn [ERROR] '$AppName' installation failed.$Reset"
+    Write-ScriptText "Details: $($_.Exception.Message)" $FGMagenta
     $finalExitCode = if ($null -ne $exit) { $exit } else { -1 }
     $Summary.Add([pscustomobject]@{ AppName = $AppName; Type = $InstallerType; Exit = $finalExitCode; Present = $false; Time = Get-Date })
     $global:ScriptExitCode = 1
@@ -367,12 +394,12 @@ function Invoke-GenericInstall {
 
   $present = $false
   if ($isUserCtx) {
-    Write-Host "User-context install for '$AppName' was initiated. Verification deferred." -ForegroundColor Yellow
+    Write-ScriptText "User-context install initiated. Verification deferred." $FGDarkYellow
     $present = $true
   } else {
     $present = Wait-UntilDetected -App $App -TimeoutSec 150 -IntervalSec 5
-    if ($present) { Write-Host "'$AppName' installed or already present." -ForegroundColor Green }
-    else { Write-Warning "'$AppName' not detected after timeout; check the log or retry." }
+    if ($present) { Write-Host "  $FGGreen$Char_HeavyCheck '$AppName' successfully installed.$Reset" }
+    else { Write-Host "  $FGDarkYellow$Char_Warn '$AppName' not detected after timeout.$Reset" }
   }
 
   $Summary.Add([pscustomobject]@{ AppName = $AppName; Type = $InstallerType; Exit = $exit; Present = [bool]$present; Time = Get-Date })
@@ -387,53 +414,53 @@ else {
     $chassis = (Get-CimInstance -ClassName Win32_SystemEnclosure -ErrorAction SilentlyContinue).ChassisTypes
     if ($chassis -and ($chassis -contains 3 -or $chassis -contains 4 -or $chassis -contains 5 -or $chassis -contains 6 -or $chassis -contains 7 -or $chassis -contains 15 -or $chassis -contains 23 -or $chassis -contains 31)) { $IsDesktop = $true }
   } catch {}
-  Write-Host "Auto-detected DeviceType: $(if($IsDesktop){'Desktop'}else{'Laptop'})" -ForegroundColor Yellow
+  Write-ScriptText "Auto-detected DeviceType: $(if($IsDesktop){'Desktop'}else{'Laptop'})" $FGDarkYellow
 }
 
-# Compose final app list with conditional modules
-$RequiredApps = @()
-$RequiredApps += $BaseApps
+# Compose final app list
+$RequiredApps = [System.Collections.Generic.List[Object]]::new()
+$RequiredApps.AddRange($BaseApps)
 if (-not $IsDesktop) {
-  $RequiredApps += $AirMediaModule
-  Write-Host "Crestron AirMedia module included for Laptop." -ForegroundColor Yellow
+  $RequiredApps.Add($AirMediaModule)
+  Write-ScriptText "Crestron AirMedia module included for Laptop." $FGDarkYellow
 }
 
 # --- MAIN SCRIPT BODY ---
 
-# Validate all app configurations
-Write-Host "Validating app configurations..." -ForegroundColor Cyan
+Write-Host ""
+Write-ScriptText "Validating app configurations..."
 $configValid = $true
 foreach ($app in $RequiredApps) { if (-not (Test-AppConfiguration -App $app)) { $configValid = $false } }
-if (-not $configValid) { Write-Error "Configuration validation failed. Fix errors above and re-run."; return }
-Write-Host "Configuration validation passed." -ForegroundColor Green
+if (-not $configValid) { Write-Error "Configuration validation failed."; return }
+Write-Host "  $FGGreen$Char_HeavyCheck Configuration validation passed.$Reset"
 Write-Stamp "Config validated"
 
-# Separate apps into prerequisite and standard lists (safe missing-key handling)
+# Separate apps
 $PrerequisiteApps = $RequiredApps | Where-Object { $_.ContainsKey('IsPrerequisite') -and $_.IsPrerequisite }
 $StandardApps     = $RequiredApps | Where-Object { -not ($_.ContainsKey('IsPrerequisite') -and $_.IsPrerequisite) }
 
 # --- GUIDED PREREQUISITE CHECK ---
 while ($true) {
-  Write-Host "--- Starting Security Prerequisite Check ---" -ForegroundColor Cyan
+  Write-Host ""
+  Write-ScriptText "--- Starting Security Prerequisite Check ---"
   $MissingPrereqs = [System.collections.Generic.List[object]]::new()
 
   foreach ($app in $PrerequisiteApps) {
     if (-not (Test-AppInstalled -App $app)) { $MissingPrereqs.Add($app) }
-    else { Write-Host "- $($app.AppName): Found" -ForegroundColor Green }
+    else { Write-Host "  $FGGreen$Char_BallotCheck $($app.AppName): Found$Reset" }
   }
 
   if ($MissingPrereqs.Count -gt 0) {
-    Write-Warning "The following security prerequisites are missing:"
+    Write-ScriptText "The following security prerequisites are missing:" $FGDarkYellow
     foreach ($app in $MissingPrereqs) {
-      Write-Host "- $($app.AppName)" -ForegroundColor Red
-      if ($app.ContainsKey('ManualInstallPath')) { Write-Host "  Installation path: $($app.ManualInstallPath)" }
+      Write-Host "  $FGRed$Char_XSquare $($app.AppName)$Reset"
+      if ($app.ContainsKey('ManualInstallPath')) { Write-ScriptText "   Path: $($app.ManualInstallPath)" $FGGray }
     }
-    Read-Host "After installing all missing applications, press Enter to re-check"
+    Read-Host "  After installing all missing applications, press Enter to re-check"
   }
   else {
-    Write-Host "All security prerequisites are met." -ForegroundColor Green
-    Write-Host "--------------------------------------------"
-    Write-Host
+    Write-Host "  $FGGreen$Char_HeavyCheck All security prerequisites are met.$Reset"
+    Write-SectionBoundary
     break
   }
 }
@@ -442,50 +469,75 @@ while ($true) {
 if (-not (Assert-WingetVersion -Minimum $MinWingetVersion)) { Write-Stamp "winget too old"; return }
 Ensure-WingetSources
 
-Write-Host "Starting check for required applications..."
+Write-Host ""
+Write-ScriptText "Starting check for required applications..."
 $AppsToInstall = @()
 $AlreadyPresentApps = [System.Collections.Generic.List[string]]::new()
 foreach ($app in $StandardApps) {
   if (Test-AppInstalled -App $app) {
-    Write-Host " - Found: $($app.AppName)" -ForegroundColor Green
+    Write-Host "  $FGGreen$Char_BallotCheck Found: $($app.AppName)$Reset"
     $AlreadyPresentApps.Add($app.AppName)
   } else {
-    Write-Host " - Missing: $($app.AppName)" -ForegroundColor Yellow
+    Write-Host "  $FGDarkYellow$Char_XSquare Missing: $($app.AppName)$Reset"
     $AppsToInstall += $app
   }
 }
 
-Write-Host
+Write-Host ""
 if ($AppsToInstall.Count -gt 0) {
   $AppsToInstall = $AppsToInstall | Sort-Object InstallOrder
-  Write-Host "--------------------------------------------------"
-  Write-Warning "Missing applications detected: $($AppsToInstall.Count)"
+  Write-SectionBoundary
+  Write-ScriptText "Missing applications detected: $($AppsToInstall.Count)" $FGDarkYellow
   Write-Host ""
-  Write-Host "The following applications will be installed:" -ForegroundColor Cyan
+  
+  # Body Title
+  $BodyTitle = " —— APPLICATIONS TO INSTALL —— "
+  $BodyPad = [Math]::Floor((60 - $BodyTitle.Length) / 2)
+  Write-Host (" " * $BodyPad + "$Bold$FGWhite$BodyTitle$Reset")
+  
   foreach ($app in $AppsToInstall) {
-    Write-Host "  • $($app.Name)" -ForegroundColor White
+    Write-Host "  $FGWhite  $Char_Finger $($app.AppName)$Reset"
   }
 
-  # Prompt to proceed with installation
+  # --- CUSTOM PROMPT FORMATTING ---
   Write-Host ""
-  $choice = Read-Host "Install missing applications? (Y/N)"
-  if ($choice -notmatch '^[Yy]$') {
-    Write-Host "Installation canceled by user." -ForegroundColor Yellow
-    Write-Stamp "Installation canceled by user"
-    Stop-Transcript
-    exit 0
+  $PromptStr = " $Char_Finger${FGDarkMagenta} Press ${FGYellow}Enter${FGDarkMagenta} to Install missing applications  |  Press ${FGYellow}Spacebar${FGDarkMagenta} to Exit$Reset"
+  $VisibleText = " $Char_Finger Press Enter to Install missing applications  |  Press Spacebar to Exit"
+  $PromptPadding = [Math]::Max(0, [Math]::Floor((60 - $VisibleText.Length) / 2))
+  Write-Host (" " * $PromptPadding + $PromptStr)
+
+  $validInput = $false
+  while (-not $validInput) {
+    $key = [Console]::ReadKey($true)
+    if ($key.Key -eq 'Enter') {
+      $validInput = $true
+    } elseif ($key.Key -eq 'Spacebar') {
+      Write-Host ""
+      Write-ScriptText "Installation canceled by user." $FGDarkYellow
+      Write-Stamp "Installation canceled by user"
+      Stop-Transcript
+      
+      # --- [USER PREFERENCE] END OF SCRIPT PADDING ---
+      Write-Host ""
+      Write-Host ""
+      Write-Host ""
+      Write-Host ""
+      Write-Host ""
+      # -----------------------------------------------
+      return
+    }
   }
 
-  Write-Host "--------------------------------------------------"
-  Write-Host "Installing missing applications..." -ForegroundColor Yellow
+  Write-SectionBoundary
+  Write-ScriptText "Installing missing applications..." $FGDarkYellow
   Write-Stamp "Starting application installation"
   foreach ($app in $AppsToInstall) { Invoke-GenericInstall -App $app }
 } else {
-  Write-Host "All required applications are already installed." -ForegroundColor Green
+  Write-Host "  $FGGreen$Char_HeavyCheck All required applications are already installed.$Reset"
 }
 
 # --- FINAL SUMMARY ---
-Stop-Transcript
+Stop-Transcript | Out-Null
 $logContent = [System.Collections.Generic.List[string]]::new()
 $logContent.Add("========================================")
 $logContent.Add(" App Installation Log")
@@ -516,21 +568,21 @@ $logContent.Add("End of Report")
 
 $logContent | Out-File -FilePath $SummaryLogPath -Encoding UTF8 -Force
 
-Write-Host "--------------------------------------------------"
-Write-Host "All operations complete." -ForegroundColor Cyan
-Write-Host "Summary log: $SummaryLogPath"
-Write-Host "Transcript:  $TranscriptLogPath"
+Write-SectionBoundary
+Write-ScriptText "All operations complete."
+Write-ScriptText "Summary log: $SummaryLogPath" $FGGray
+Write-ScriptText "Transcript:  $TranscriptLogPath" $FGGray
 Write-Stamp "Summary emitted"
 
 # --- [ADDED PER REQUEST] Wait before final verification ---
-Write-Host
-Write-Host "Waiting 10 seconds for services to settle before final verification..." -ForegroundColor Yellow
+Write-Host ""
+Write-ScriptText "Waiting 10 seconds for services to settle before final verification..." $FGDarkYellow
 Start-Sleep -Seconds 10
 # --- [END ADDITION] ---
 
 # --- FINAL CONDITIONAL OUTPUT ---
-Write-Host
-Write-Host "--------------------------------------------------"
+Write-Host ""
+Write-SectionBoundary
 
 $StillMissingApps = [System.Collections.Generic.List[string]]::new()
 foreach ($app in $AppsToInstall) {
@@ -543,19 +595,20 @@ foreach ($app in $AppsToInstall) {
 }
 
 if ($StillMissingApps.Count -eq 0) {
-  Write-Host "All required applications have been installed successfully!" -ForegroundColor Green
+  Write-Host "  $FGGreen$Char_HeavyCheck All required applications have been installed successfully!$Reset"
 } else {
-  Write-Host "Required applications that still need to be installed:" -ForegroundColor Red
-  $StillMissingApps | ForEach-Object { Write-Host "- $_" -ForegroundColor Red }
-  Write-Host "`nSee log for details: $TranscriptLogPath" -ForegroundColor Yellow
+  Write-Host "  $FGRed$Char_Cross Required applications that still need to be installed:$Reset"
+  $StillMissingApps | ForEach-Object { Write-Host "  $FGRed - $_$Reset" }
+  Write-ScriptText "See log for details: $TranscriptLogPath" $FGDarkYellow
 }
-Write-Host "--------------------------------------------------"
+Write-SectionBoundary
 Write-Stamp "Run complete"
 
 # --- [NEW] RE-ENABLE CONTROLLED FOLDER ACCESS ---
-Write-Host "`n--------------------------------------------------"
-Write-Host "Attempting to re-enable 'Controlled Folder Access'..." -ForegroundColor Yellow
+Write-Host ""
+Write-ScriptText "Attempting to re-enable 'Controlled Folder Access'..."
 Write-Stamp "Re-enabling Controlled Folder Access"
+
 try {
     # Enable Controlled Folder Access
     Set-MpPreference -EnableControlledFolderAccess Enabled -ErrorAction Stop
@@ -563,21 +616,27 @@ try {
     # Verify the setting
     $newPrefs = Get-MpPreference
     if ($newPrefs.EnableControlledFolderAccess -eq 1) {
-        Write-Host "[SUCCESS] Controlled Folder Access has been re-enabled." -ForegroundColor Green
+        Write-Host "  $FGGreen$Char_HeavyCheck [Success] Controlled Folder Access has been re-enabled.$Reset"
         Write-Stamp "Controlled Folder Access enabled"
     } else {
-        Write-Warning "[FAILURE] Failed to re-enable Controlled Folder Access."
-        Write-Warning "The current state is: $($newPrefs.EnableControlledFolderAccess). This may be set by Group Policy."
+        Write-Host "  $FGRed$Char_Cross [Failure] Failed to re-enable Controlled Folder Access.$Reset"
+        Write-ScriptText "The current state is: $($newPrefs.EnableControlledFolderAccess). This may be set by Group Policy." $FGDarkYellow
         Write-Stamp "Failed to re-enable Controlled Folder Access (State: $($newPrefs.EnableControlledFolderAccess))"
     }
 } catch {
-    Write-Warning "`n[ERROR] An error occurred while trying to re-enable Controlled Folder Access:"
-    Write-Warning $_.Exception.Message
-    Write-Warning "This is often because the setting is managed by Group Policy (GPO) or Intune."
+    Write-Host "  $FGMagenta$Char_Warn [ERROR] An error occurred while trying to re-enable Controlled Folder Access:$Reset"
+    Write-ScriptText $_.Exception.Message $FGMagenta
+    Write-ScriptText "This is often because the setting is managed by Group Policy (GPO) or Intune." $FGDarkYellow
     Write-Stamp "Error re-enabling Controlled Folder Access: $($_.Exception.Message)"
 }
-Write-Host "--------------------------------------------------`n"
+Write-SectionBoundary
 # --- [END NEW] ---
+
+# --- COPYRIGHT FOOTER ---
+Write-Host ""
+$FooterText = "$Char_Copyright 2025, www.AIIT.support. All Rights Reserved."
+$FooterPadding = [Math]::Floor((60 - $FooterText.Length) / 2)
+Write-Host (" " * $FooterPadding + "$FGDarkCyan$FooterText$Reset")
 
 # --- EXIT CODE POLICY ---
 $rebootMatches = @($Summary | Where-Object { $_.Exit -eq 3010 })
@@ -588,3 +647,10 @@ if ($ScriptExitCode -ne 0) {
     $ScriptExitCode = 3010 # Reboot needed
 }
 
+# --- [USER PREFERENCE] END OF SCRIPT PADDING ---
+Write-Host ""
+Write-Host ""
+Write-Host ""
+Write-Host ""
+Write-Host ""
+# -----------------------------------------------
