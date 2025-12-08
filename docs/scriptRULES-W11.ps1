@@ -16,7 +16,7 @@
 
 .NOTES
     Author: PatchW11 Team
-    Version: 7.8
+    Version: 7.10
     Repository: https://github.com/KeithOwns/PatchW11
 #>
 
@@ -104,7 +104,6 @@ function Show-VisualExamples {
     Write-Output (" " * $TopPadding + "$Bold$FGCyan$TopTitle$Reset")
     
     # --- SUB-HEADER: Patch-W11 (DarkCyan) + Loop Icon (Blue) ---
-    # Moved here per request (under Script Output Rules)
     $SubText = "Patch-W11 "
     $SubIcon = "$Char_Loop"
     $FullSubLength = $SubText.Length + $SubIcon.Length
@@ -164,25 +163,17 @@ function Show-VisualExamples {
     Write-Output ""
     Write-Output ""
 
-    # --- PART 2: SCRIPT OUTPUT DEFAULTS (MOVED BOTTOM) ---
+    # --- PART 2: SCRIPT OUTPUT DEFAULTS (HIDDEN BY DEFAULT) ---
 
-    # --- FORMATTING RULES HEADER (CYAN) ---
-    $RulesTitle = "  —— SCRIPT OUTPUT DEFAULTS ——  "
-    $RulesPadding = [Math]::Floor((60 - $RulesTitle.Length) / 2)
-    Write-Output (" " * $RulesPadding + "$Bold$FGCyan$RulesTitle$Reset")
-    
-    # --- SUB-HEADER: Patch-W11 (DarkCyan) + Loop Icon (Blue) ---
-    # Moved to top of script, so removing from here to avoid duplication? 
-    # Or did user mean move it *back* to formatting rules section?
-    # User said: 'Move the "Patch-W11 🔄" to just under the " —— SCRIPT OUTPUT RULES ——"'
-    # The top title is "SCRIPT OUTPUT RULES".
-    # The bottom section title is "SCRIPT OUTPUT DEFAULTS".
-    # I have moved it to the top section under "SCRIPT OUTPUT RULES".
-    
-    # DarkBlue Separator Line (60 em dashes)
-    Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
-    
     if ($ShowFormattingRules) {
+        # DarkBlue Separator Line (60 em dashes) - Placed above Defaults Title
+        Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
+
+        # --- FORMATTING RULES HEADER (CYAN) ---
+        $RulesTitle = "  —— SCRIPT OUTPUT DEFAULTS ——  "
+        $RulesPadding = [Math]::Floor((60 - $RulesTitle.Length) / 2)
+        Write-Output (" " * $RulesPadding + "$Bold$FGCyan$RulesTitle$Reset")
+        
         # Rules Text in DarkCyan - Added 2 spaces indentation
         Write-Output "  ${FGDarkCyan}A. Text Formatting:$Reset"
         Write-Output "  ${FGDarkCyan}   1. Never split whole words over multiple lines.$Reset"
@@ -192,9 +183,8 @@ function Show-VisualExamples {
         
         # DarkBlue Separator Line (just below formatting rules)
         Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
-    } else {
-        # Hidden by default
-    }
+    } 
+    # Else: Do not show defaults section
 }
 
 # ============================================================================
