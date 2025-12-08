@@ -177,9 +177,10 @@ function Show-VisualExamples {
         # Rules Text in DarkCyan - Added 2 spaces indentation
         Write-Output "  ${FGDarkCyan}A. Text Formatting:$Reset"
         Write-Output "  ${FGDarkCyan}   1. Never split whole words over multiple lines.$Reset"
-        Write-Output "  ${FGDarkCyan}   2. Text Alignment: Center-align$Reset"
-        Write-Output "  ${FGDarkCyan}   3. Text Indentation: 2 spaces left & right$Reset"
-        Write-Output "  ${FGDarkCyan}   4. Boundaries composed of (`"$Char_EmDash`" * 60)$Reset"
+        Write-Output "  ${FGDarkCyan}   2. Header Alignment: Center-align$Reset"
+        Write-Output "  ${FGDarkCyan}   3. Body Alignment: Right-align$Reset"
+        Write-Output "  ${FGDarkCyan}   4. Body Indentation: 2 spaces left & right$Reset"
+        Write-Output "  ${FGDarkCyan}   5. Boundaries composed of (`"—`" * 60)$Reset"
         
         # DarkBlue Separator Line (just below formatting rules)
         Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
