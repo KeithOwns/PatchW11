@@ -2,6 +2,10 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# --- [USER PREFERENCE] CLEAR SCREEN START ---
+Clear-Host
+# --------------------------------------------
+
 # --- Preamble: Formatting Rules & Encoding ---
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $Esc = [char]0x1B
@@ -12,6 +16,7 @@ $Bold = "$Esc[1m"
 $FGCyan       = "$Esc[96m"
 $FGDarkCyan   = "$Esc[36m"
 $FGDarkBlue   = "$Esc[34m"
+$FGBlue       = "$Esc[94m"  # Added for Header Icon
 $FGWhite      = "$Esc[97m"
 $FGGray       = "$Esc[37m"
 $FGDarkGray   = "$Esc[90m"
@@ -57,8 +62,19 @@ function Write-LeftAligned {
 
 function Write-Header {
     param([string]$Title)
-    # Rule 2: Headers remain Center-aligned
-    Write-Centered "$Bold$FGCyan$Char_EmDash$Char_EmDash $Title $Char_EmDash$Char_EmDash$Reset"
+    $Width = 60
+    $Pad = [Math]::Max(0, [Math]::Floor(($Width - $Title.Length) / 2))
+    $Line = "$FGDarkBlue$([string]$Char_EmDash * $Width)$Reset"
+    
+    # Print Top Line, Centered Title, Sub-Header
+    Write-Host $Line
+    Write-Host (" " * $Pad + "$Bold$FGCyan$Title$Reset")
+    
+    $SubText = "Patch-W11 "
+    $SubIcon = "$Char_Loop"
+    $SubPad = [Math]::Max(0, [Math]::Floor(($Width - ($SubText.Length + 1)) / 2)) # Approx width fix for icon
+    Write-Host (" " * $SubPad + "$Bold$FGDarkCyan$SubText$FGBlue$SubIcon$Reset")
+    Write-Host $Line
 }
 
 function Write-BodyTitle {
@@ -112,7 +128,6 @@ $WINLOGON_MACHINE = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon
 
 function Show-WUStatus {
     Write-Header "WINDOWS UPDATE SETTINGS"
-    Write-Boundary $FGDarkBlue
 
     Write-Host ""
     Write-BodyTitle "More options"
@@ -205,7 +220,6 @@ function Set-WUSettings {
 function Invoke-MSStoreUpdateCheck {
     Write-Host ""
     Write-Header "MICROSOFT STORE UPDATES"
-    Write-Boundary $FGDarkBlue
 
     try {
         Add-Type -AssemblyName UIAutomationClient
@@ -262,7 +276,6 @@ function Invoke-MSStoreUpdateCheck {
 function Invoke-WinUpdateCheck {
     Write-Host ""
     Write-Header "WINDOWS UPDATE CHECK"
-    Write-Boundary $FGDarkBlue
 
     try {
         Add-Type -AssemblyName UIAutomationClient
@@ -317,10 +330,7 @@ function Invoke-WinUpdateCheck {
 }
 
 # --- Main ---
-Clear-Host
-Write-Host ""
 Write-Header "WINDOWS UPDATE CONFIGURATOR"
-Write-Boundary $FGDarkBlue
 
 Set-WUSettings
 Show-WUStatus
@@ -328,7 +338,7 @@ Show-WUStatus
 # --- User Prompt ---
 Write-Host ""
 # Icons and Colors matched to scriptRULES-W11.ps1
-$prompt = "${FGDarkMagenta}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkMagenta} to Run Checks  |  Press ${FGYellow}$Char_Finger Space${FGDarkMagenta} to Skip$Reset"
+$prompt = "${FGDarkCyan}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkCyan} to Run Checks  |  Press ${FGYellow}$Char_Finger Spacebar${FGDarkCyan} to Skip$Reset"
 Write-Centered $prompt
 
 do {
@@ -348,7 +358,7 @@ Write-Host ""
 $lastEditedTimestamp = "2025-11-25"
 Write-Boundary $FGDarkBlue
 Write-Centered "$FGDarkCyan$Char_Copyright $lastEditedTimestamp, www.AIIT.support$Reset"
-Write-Boundary $FGDarkBlue
+# Write-Boundary $FGDarkBlue # Removed bottom boundary to match typical Install script footer style if preferred, otherwise keep. Kept simple.
 
 # Exit Spacing
 1..5 | ForEach-Object { Write-Host "" }
