@@ -97,6 +97,8 @@ $Char_Square          = [char]0x2B1B # ⬛
 $Char_WhiteCheck      = [char]0x2705 # ✅
 $Char_XSquare         = [char]0x274E # ❎
 $Char_NoEntry         = [char]::ConvertFromUtf32(0x26D4) # 🚫
+$Char_Keyboard        = [char]0x2328 # ⌨
+$Char_Finger          = [char]0x261B # ☛
 
 # ANSI Escape Sequences
 $Esc = [char]0x1B
@@ -132,6 +134,19 @@ $DoubleSeparatorLine = "$FGDarkBlue" + ([string]$Char_EmDash * 60) + "$Reset"
 $EmDashLine = "$FGDarkBlue" + ([string]$Char_EmDash * 60) + "$Reset"
 
 # --- Helper Functions (Formatted) ---
+
+function Write-Centered {
+    param(
+        [string]$Text,
+        [int]$Width = 60
+    )
+    # Strip ANSI for length calculation
+    $cleanText = $Text -replace "$Esc\[[0-9;]*m", ""
+    $padLeft = [Math]::Floor(($Width - $cleanText.Length) / 2)
+    if ($padLeft -lt 0) { $padLeft = 0 }
+    
+    Write-Host (" " * $padLeft + $Text)
+}
 
 function Write-StatusIcon {
     <#
@@ -1222,16 +1237,10 @@ function Invoke-ApplySecuritySettings {
 
     Write-Host "  Would you like to apply recommended settings?" -ForegroundColor Cyan
 
-    # UPDATED: Interactive selection to match footer style (Input Info = DarkMagenta, Key = Yellow)
+    # UPDATED: Interactive selection to match updated Keypress style
     Write-Host ""
-    Write-Host "  Press " -NoNewline -ForegroundColor DarkMagenta
-    Write-Host "Enter" -NoNewline -ForegroundColor Yellow
-    Write-Host " to Apply recommended settings" -ForegroundColor DarkMagenta
-
-    # UPDATED: Spacebar is now the primary exit/skip option, replacing Esc functionality
-    Write-Host "  Press " -NoNewline -ForegroundColor DarkMagenta
-    Write-Host "Spacebar" -NoNewline -ForegroundColor Yellow
-    Write-Host " to Exit without applying settings" -ForegroundColor DarkMagenta
+    $prompt = "${FGDarkMagenta}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkMagenta} to Apply Settings  |  Press ${FGYellow}$Char_Finger Space${FGDarkMagenta} to Exit$Reset"
+    Write-Centered $prompt
 
     $validInput = $false
     while (-not $validInput) {
@@ -1332,17 +1341,9 @@ try {
     
     # REMOVED: "ADDITIONAL OPTIONS" header as requested
     
-    # UPDATED: Key instructions per request (Input Info=DarkMagenta, Key=Yellow)
-    # Line 1: "  Press " (DarkMagenta) + "Enter" (Yellow) + " to Run a quick scan" (DarkMagenta)
-    Write-Host "  Press " -NoNewline -ForegroundColor DarkMagenta
-    Write-Host "Enter" -NoNewline -ForegroundColor Yellow
-    Write-Host " to Run a quick scan" -ForegroundColor DarkMagenta
-    
-    # Line 2: "  Press " (DarkMagenta) + "Spacebar" (Yellow) + " to Close" (DarkMagenta)
-    # Replaces the old Esc line
-    Write-Host "  Press " -NoNewline -ForegroundColor DarkMagenta
-    Write-Host "Spacebar" -NoNewline -ForegroundColor Yellow
-    Write-Host " to Close" -ForegroundColor DarkMagenta
+    # UPDATED: Key instructions per updated Keypress style
+    $prompt = "${FGDarkMagenta}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkMagenta} to Quick Scan  |  Press ${FGYellow}$Char_Finger Space${FGDarkMagenta} to Close$Reset"
+    Write-Centered $prompt
 
     $validInput = $false
     while (-not $validInput) {
