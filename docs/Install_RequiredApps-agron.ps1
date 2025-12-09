@@ -149,6 +149,7 @@ $AirMediaModule = @{
   MatchName    = "*AirMedia*"
   Type         = "WINGET"
   CheckMethod  = "Registry"
+  RegistryScope = "All"
   WingetScope  = 'Machine'
   WingetId     = "Crestron.AirMedia"
   InstallOrder = 100
