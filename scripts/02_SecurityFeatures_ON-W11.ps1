@@ -14,7 +14,8 @@
     UPDATED: Scan History indented & Threat count colored.
     UPDATED: Quick Scan skipped if third-party AV is active.
     UPDATED: Success summary lines manually centered for alignment.
-    UPDATED: Scan history body now uses Indent 8.
+    UPDATED: Scan history body now uses Indent 8 and colon alignment.
+    UPDATED: Scan history section skipped entirely if third-party AV is active.
 
 .PARAMETER ShowRemediation
     Display PowerShell commands to fix disabled security features
@@ -437,20 +438,33 @@ function Get-ScanInformation {
 
     $script:ScanStatusAllGreen = ($qsColor -eq $FGGreen) -and ($fsColor -eq $FGGreen) -and ($updColor -eq $FGGreen) -and ($script:ActiveThreatCount -eq 0)
 
-    # UPDATED: Indent 8 for all Scan Information content
-    $threatColor = if ($script:ActiveThreatCount -eq 0) { $FGDarkGreen } else { $FGRed }
-    Write-LeftAligned "Threats found: $threatColor$($script:ActiveThreatCount)$Reset" -Indent 8
-    
-    $qsTime = if ($status.QuickScanStartTime) { $status.QuickScanStartTime.ToString('yyyy-MM-dd HH:mm') } else { "Never" }
-    Write-LeftAligned "Last quick scan: $qsColor$qsTime$Reset" -Indent 8
+    # --- Padding for Colon Alignment ---
+    $LabelWidth = 17 # Max length of "Signature version"
+    $Indent = 8
 
+    # 1. Threats found
+    $threatColor = if ($script:ActiveThreatCount -eq 0) { $FGDarkGreen } else { $FGRed }
+    $threatLabel = "Threats found"
+    Write-LeftAligned "$FGDarkCyan$($threatLabel.PadRight($LabelWidth)):$Reset $threatColor$($script:ActiveThreatCount)$Reset" -Indent $Indent
+    
+    # 2. Last quick scan
+    $qsLabel = "Last quick scan"
+    $qsTime = if ($status.QuickScanStartTime) { $status.QuickScanStartTime.ToString('yyyy-MM-dd HH:mm') } else { "Never" }
+    Write-LeftAligned "$FGDarkCyan$($qsLabel.PadRight($LabelWidth)): $qsColor$qsTime$Reset" -Indent $Indent
+
+    # 3. Last full scan
+    $fsLabel = "Last full scan"
     $fsTime = if ($status.FullScanStartTime) { $status.FullScanStartTime.ToString('yyyy-MM-dd HH:mm') } else { "Never" }
-    Write-LeftAligned "Last full scan: $fsColor$fsTime$Reset" -Indent 8
+    Write-LeftAligned "$FGDarkCyan$($fsLabel.PadRight($LabelWidth)): $fsColor$fsTime$Reset" -Indent $Indent
     
-    Write-LeftAligned "Signature version: $($status.AntivirusSignatureVersion)" -Indent 8
+    # 4. Signature version
+    $sigLabel = "Signature version"
+    Write-LeftAligned "$FGDarkCyan$($sigLabel.PadRight($LabelWidth)): $FGWhite$($status.AntivirusSignatureVersion)$Reset" -Indent $Indent
     
+    # 5. Last updated
+    $updLabel = "Last updated"
     $updTime = if ($status.AntivirusSignatureLastUpdated) { $status.AntivirusSignatureLastUpdated.ToString('yyyy-MM-dd HH:mm') } else { "Never" }
-    Write-LeftAligned "Last updated: $updColor$updTime$Reset" -Indent 8
+    Write-LeftAligned "$FGDarkCyan$($updLabel.PadRight($LabelWidth)): $updColor$updTime$Reset" -Indent $Indent
 
     Write-Boundary $FGDarkBlue
 }
@@ -550,7 +564,7 @@ function Invoke-ApplySecuritySettings {
             Write-LeftAligned "$FGGreen Settings applied.$Reset"
             Write-Boundary $FGDarkBlue
         } elseif ($key.Character -eq ' ') { # Space
-            $valid = $true
+            $valid = true
             Write-Host "`n"
             Write-LeftAligned "$FGGray Skipped application.$Reset"
             Write-Log "User skipped applying settings" "INFO"
@@ -574,7 +588,11 @@ try {
     Get-FirewallStatus
     Get-ReputationProtection
     Get-CoreIsolationStatus
-    Get-ScanInformation
+    
+    # NEW: Skip scan history if using 3rd party AV
+    if (-not $script:ThirdPartyAVActive) {
+        Get-ScanInformation
+    }
     
     Show-SecuritySummary
     Invoke-ApplySecuritySettings
@@ -586,7 +604,7 @@ try {
         $prompt = "${FGDarkCyan}$Char_Keyboard  Third-Party AV Active: Quick Scan Skipped$Reset"
         Write-Centered $prompt
     } else {
-        $prompt = "${FGDarkCyan}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkCyan} to Quick Scan  |  Press ${FGYellow}$Char_Finger Spacebar${FGDarkCyan} to Close$Reset"
+        $prompt = "${FGDarkCyan}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkCyan} to Quick Scan  |  Press ${FGYellow}$Char_Finger Spacebar${FGDarkCyan} to Continue$Reset" # EDITED: Changed 'Close' to 'Continue'
         Write-Centered $prompt
 
         $valid = $false
@@ -601,6 +619,8 @@ try {
                 Write-LeftAligned "$FGGreen Scan Complete.$Reset"
                 Write-Log "Quick Scan Complete" "SUCCESS"
             } elseif ($key.Character -eq ' ') {
+                # This breaks the loop, allowing the script to terminate naturally
+                # without an explicit 'exit', thereby leaving the host window open.
                 $valid = true
             }
         }
@@ -611,7 +631,7 @@ try {
     Write-Boundary $FGDarkBlue
     Write-Centered "$FGDarkCyan$Char_Copyright $LastEditYear, www.AIIT.support$Reset"
     
-    # Final 5 Lines
+    # Final 5 Lines (Ensures console window remains readable)
     1..5 | ForEach-Object { Write-Host "" }
 
 } catch {
