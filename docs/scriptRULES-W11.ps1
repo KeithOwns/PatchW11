@@ -60,29 +60,29 @@ $Bold = "$Esc[1m"
 $FGCyan       = "$Esc[96m"  # Header Title
 $FGBlue       = "$Esc[94m"  # Body Icon
 $FGDarkBlue   = "$Esc[34m"  # Header Boundary
-$FGGreen      = "$Esc[92m"  # System Success
-$FGRed        = "$Esc[91m"  # System Failure
-$FGMagenta    = "$Esc[95m"  # System Error / Input Info
+$FGGreen      = "$Esc[92m"  # SCRIPT Success
+$FGRed        = "$Esc[91m"  # SCRIPT Failure
+$FGMagenta    = "$Esc[95m"  # SCRIPT Error
 $FGYellow     = "$Esc[93m"  # Input Keypress
-$FGDarkCyan   = "$Esc[36m"  # SCRIPT Text
+$FGDarkCyan   = "$Esc[36m"  # Output Text
 $FGWhite      = "$Esc[97m"  # Body Title
-$FGGray       = "$Esc[37m"  # System Text
+$FGGray       = "$Esc[37m"  # Body Text
 $FGDarkGray   = "$Esc[90m"  # Body Boundary
-$FGDarkGreen  = "$Esc[32m"  # SCRIPT Enabled
-$FGDarkRed    = "$Esc[31m"  # SCRIPT Disabled
-$FGDarkYellow = "$Esc[33m"  # SCRIPT Warning
-$FGDarkMagenta= "$Esc[35m"  # Dark Magenta
+$FGDarkGreen  = "$Esc[32m"  # System Enabled
+$FGDarkRed    = "$Esc[31m"  # System Disabled
+$FGDarkYellow = "$Esc[33m"  # System Warning
+$FGDarkMagenta= "$Esc[35m"  # Dark Magenta - Removed from use, kept for safety
 
 # Helper for formatted column output
 function Write-Row {
     param($ColorName, $ANSI, $About, $Type, $Hex, $Rep, $ColorCode)
     
     # Column Width Configuration
-    $CNamePadded = $ColorName.PadRight(10) 
+    $CNamePadded = $ColorName.PadRight(11) # <- Increased padding from 10 to 11 for "Text Color" column
     $ANSIPadded  = $ANSI.PadRight(7)       
     $AboutPadded = $About.PadRight(7)
     $TypePadded  = $Type.PadRight(9)
-    $HexPadded   = $Hex.PadRight(8)
+    $HexPadded   = $Hex.PadRight(7) 
     
     # Output Row
     Write-Host "  $ColorCode$CNamePadded$Reset $ANSIPadded$AboutPadded$TypePadded$HexPadded$ColorCode$Rep$Reset "
@@ -115,46 +115,45 @@ function Show-VisualExamples {
     # DarkBlue Separator Line (60 em dashes) - Placed above Legend Title
     Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
 
-    # Title
-    $GuideTitle = " $Char_EmDash$Char_EmDash SCRIPT OUTPUT LEGEND $Char_EmDash$Char_EmDash "
-    $GuidePadding = [Math]::Floor((60 - $GuideTitle.Length) / 2)
-    Write-Output (" " * $GuidePadding + "$Bold$FGWhite$GuideTitle$Reset")
+    # Title (Updated to left-aligned, 0-space indent, White, Bold)
+    Write-Output "$Bold$FGWhite Script Output LEGEND$Reset"
     
     # Added empty lines
     Write-Output ""
     
-    # Table Header
-    Write-Output "  ${FGGray}Text Color ANSI   About  Type     Hex     Representation$Reset"
+    # Table Header (Adjusted spacing for new Text Color column width)
+    Write-Output "  ${FGGray}Text Color  ANSI   About  Type     Hex    Representation$Reset"
     
     # Table Separator
     Write-Output "$FGDarkGray$([string]$Char_EmDash * 60)$Reset"
 
-    # --- ROW DATA ---
+    # --- ROW DATA (Updated spacing for icons and Header Title) ---
     
     # Header Rows
-    Write-Row "Cyan"       "\e[96m"  "Header" "Title"    "0x2014" "—— [TITLE] ——"        $FGCyan
-    Write-Row "DarkBlue"   "\e[34m"  "Header" "Boundary" "0x2014" "———————————————"      $FGDarkBlue
+    Write-Row "Cyan"       "\e[96m"  "Header" "Title"    "0x2014" "  —— [TITLE] ——  "      $FGCyan
+    Write-Row "DarkBlue"   "\e[34m"  "Header" "Boundary" "0x2014" "————————————————"     $FGDarkBlue
     
-    # Body Rows
-    Write-Row "White"      "\e[97m"  "Body"   "Title"    "0x2014" "—— [TITLE] ——"        $FGWhite
-    Write-Row "DarkGray"   "\e[90m"  "Body"   "Boundary" "0x2014" "———————————————"      $FGDarkGray
-    Write-Row "Blue"       "\e[94m"  "Body"   "Icon"     "0x005B" "[  Icon  ]"           $FGBlue
+    # Body Rows (Updated Hex and Representation)
+    Write-Row "White"      "\e[97m"  "Body"   "Title"    "0x20*1" " [Title]"            $FGWhite
+    Write-Row "DarkGray"   "\e[90m"  "Body"   "Boundary" "0x2014" "————————————————"     $FGDarkGray
+    Write-Row "Blue"       "\e[94m"  "Body"   "Icon"     "0x20*2" "  [Icon  ]"          $FGBlue
+    Write-Row "Gray"       "\e[37m"  "Body"   "Text"     "0x20*3" "   [Text]"           $FGGray
     
-    # SCRIPT Rows
-    Write-Row "DarkCyan"   "\e[36m"  "SCRIPT" "Text"     "0x005B" "[  Text  ]"           $FGDarkCyan
-    Write-Row "DarkGreen"  "\e[32m"  "SCRIPT" "Enabled"  "0x2611" "$Char_BallotCheck  [Enabled]"       $FGDarkGreen
-    Write-Row "DarkRed"    "\e[31m"  "SCRIPT" "Disabled" "0x274E" "$Char_XSquare [Disabled]"       $FGDarkRed
-    Write-Row "DarkYellow" "\e[33m"  "SCRIPT" "Warning"  "0x26A0" "$Char_Warn  [WARNING]"        $FGDarkYellow
+    # SCRIPT Status Rows
+    Write-Row "Green"      "\e[92m"  "SCRIPT" "Success"  "0x2714" "$Char_HeavyCheck  [Success]"        $FGGreen
+    Write-Row "Red"        "\e[91m"  "SCRIPT" "Failure"  "0x274C" "$Char_RedCross [Failure]"        $FGRed
+    Write-Row "Magenta"    "\e[95m"  "SCRIPT" "Error"    "0x26D4" "$Char_NoEntry [ERROR]"         $FGMagenta
     
-    # System Rows
-    Write-Row "Gray"       "\e[37m"  "System" "Text"     "0x005B" "[  Text  ]"           $FGGray
-    Write-Row "Green"      "\e[92m"  "System" "Success"  "0x2714" "$Char_HeavyCheck  [Success]"        $FGGreen
-    Write-Row "Red"        "\e[91m"  "System" "Failure"  "0x274C" "$Char_RedCross [Failure]"        $FGRed
-    Write-Row "Magenta"    "\e[95m"  "System" "Error"    "0x26D4" "$Char_NoEntry [ ERROR ]"        $FGMagenta
+    # System Status Rows
+    Write-Row "DarkGreen"  "\e[32m"  "System" "Enabled"  "0x2611" "$Char_BallotCheck  [Enabled]"       $FGDarkGreen
+    Write-Row "DarkRed"    "\e[31m"  "System" "Disabled" "0x274E" "$Char_XSquare [Disabled]"       $FGDarkRed
+    Write-Row "DarkYellow" "\e[33m"  "System" "Warning"  "0x26A0" "$Char_Warn  [WARNING]"        $FGDarkYellow
+    
+    # Output/Text Rows (Updated Hex and Representation)
+    Write-Row "DarkCyan"   "\e[36m"  "Output" "Text"     "0x20*3" "   [Text]"           $FGDarkCyan
     
     # Input Rows
-    # DarkMagenta row removed
-    Write-Row "Yellow"     "\e[93m"  "Input"  "Keypress" "0x261B" "$Char_Keyboard  [$Char_Finger Keypress]"       $FGYellow
+    Write-Row "Yellow"     "\e[93m"  "Input"  "Keypress" "0x261B" "$Char_Finger [Keypress]"       $FGYellow
     
     # DarkBlue Separator Line below Yellow Input row
     Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
@@ -169,17 +168,18 @@ function Show-VisualExamples {
         # DarkBlue Separator Line (60 em dashes) - Placed above Defaults Title
         Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
 
-        # --- FORMATTING RULES HEADER (CYAN) ---
-        $RulesTitle = "  —— SCRIPT OUTPUT DEFAULTS ——  "
-        $RulesPadding = [Math]::Floor((60 - $RulesTitle.Length) / 2)
-        Write-Output (" " * $RulesPadding + "$Bold$FGCyan$RulesTitle$Reset")
+        # --- FORMATTING RULES HEADER (Updated to 0-space indent) ---
+        Write-Output "$Bold$FGWhite Script Output DEFAULTS$Reset"
         
-        # Rules Text in DarkCyan - Added 2 spaces indentation
+        # Rules Text in DarkCyan - Updated structure based on mockup
         Write-Output "  ${FGDarkCyan}A. Text Formatting:$Reset"
         Write-Output "  ${FGDarkCyan}   1. Never split whole words over multiple lines.$Reset"
         Write-Output "  ${FGDarkCyan}   2. Header Alignment: Center-align$Reset"
         Write-Output "  ${FGDarkCyan}   3. Body Alignment: Left-align$Reset"
-        Write-Output "  ${FGDarkCyan}   4. Body Indentation: Minimum of 2 spaces left & right$Reset"
+        Write-Output "  ${FGDarkCyan}   4. Body Indentation: $Reset"
+        Write-Output "  ${FGDarkCyan}      a. Title: 1 space $Reset"
+        Write-Output "  ${FGDarkCyan}      b. Icon : 2 spaces$Reset"
+        Write-Output "  ${FGDarkCyan}      c. Text : 3 spaces$Reset"
         Write-Output "  ${FGDarkCyan}   5. Boundaries composed of (`"$Char_EmDash`" * 60)$Reset"
         
         # DarkBlue Separator Line (just below formatting rules)
@@ -192,7 +192,8 @@ function Show-VisualExamples {
 # MAIN EXECUTION
 # ============================================================================
 if ($ShowRules) {
-    Show-FullRules
+    # Assuming Show-FullRules is defined elsewhere or not necessary for this task
+    Show-VisualExamples -ShowFormattingRules $true # Display rules directly if -ShowRules is used
     1..5 | ForEach-Object { Write-Output "" }
 } else {
     # 1. Initial State (Rules Hidden)
@@ -200,12 +201,9 @@ if ($ShowRules) {
     
     # 2. Prompt (DarkCyan with Yellow highlights)
     Write-Output ""
-    # REMOVED leading space to ensure fit (60 chars exactly)
-    # Changed DarkMagenta to DarkCyan as requested
     $PromptStr = "${FGDarkCyan}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkCyan} to Show rules  |  Press ${FGYellow}$Char_Finger Spacebar${FGDarkCyan} to Close$Reset"
     
     # Calculate centering padding
-    # REMOVED leading space to ensure fit (60 chars exactly)
     $VisibleText = "$Char_Keyboard  Press $Char_Finger Enter to Show rules  |  Press $Char_Finger Spacebar to Close"
     $PromptPadding = [Math]::Floor((60 - $VisibleText.Length) / 2)
     
