@@ -16,7 +16,7 @@ $Bold = "$Esc[1m"
 $FGCyan       = "$Esc[96m"
 $FGDarkCyan   = "$Esc[36m"
 $FGDarkBlue   = "$Esc[34m"
-$FGBlue       = "$Esc[94m"  # Added for Header Icon
+$FGBlue       = "$Esc[94m"
 $FGWhite      = "$Esc[97m"
 $FGGray       = "$Esc[37m"
 $FGDarkGray   = "$Esc[90m"
@@ -25,62 +25,103 @@ $FGDarkRed    = "$Esc[31m"
 $FGDarkYellow = "$Esc[33m"
 $FGYellow     = "$Esc[93m"
 $FGDarkMagenta= "$Esc[35m"
+$FGBlack      = "$Esc[30m"  # Added for Prompt Contrast
+
+# Background Colors
+$BGDarkCyan   = "$Esc[46m"
+$BGDarkGreen  = "$Esc[42m"
+$BGDarkGray   = "$Esc[100m"
+$BGYellow     = "$Esc[103m" # Added for Prompt Keys
 
 # Icons
 $Char_EmDash      = [char]0x2014
+$Char_EnDash      = [char]0x2013 # Added for Body Titles
 $Char_BallotCheck = [char]0x2611 # ☑
-$Char_XSquare     = [char]0x274E # ❎
+$Char_XSquare     = [char]0x26DD # ⛝ - Updated per Rules v7.83
 $Char_Warn        = [char]0x26A0 # ⚠
 $Char_Finger      = [char]0x261B # ☛
 $Char_Keyboard    = [char]0x2328 # ⌨
 $Char_Loop        = [char]::ConvertFromUtf32(0x1F504)
 $Char_Copyright   = [char]0x00A9
+$Char_Speaker     = [char]::ConvertFromUtf32(0x1F4E2) # 📢
+$Char_BlackCircle = [char]0x26AB # ⚫
+$Char_Gear        = [char]0x2699 # ⚙
+$Char_Bell        = [char]::ConvertFromUtf32(0x1F514) # 🔔
+$Char_Stopwatch   = [char]::ConvertFromUtf32(0x23F1)  # ⏱
+$Char_User        = [char]::ConvertFromUtf32(0x1F464) # 👤
 
-# --- Formatting Helpers ---
+# Global Logging Variables
+$script:LogPath = "C:\Windows\Temp\Update_$(Get-Date -Format 'yyMMdd').log"
+
+# --- Unified Helper Functions ---
 
 function Write-Centered {
-    param(
-        [string]$Text,
-        [int]$Width = 60
-    )
-    # Strip ANSI for length calculation
+    param([string]$Text, [int]$Width = 60, [string]$Color = "")
     $cleanText = $Text -replace "$Esc\[[0-9;]*m", ""
     $padLeft = [Math]::Floor(($Width - $cleanText.Length) / 2)
     if ($padLeft -lt 0) { $padLeft = 0 }
-    
-    Write-Host (" " * $padLeft + $Text)
+    Write-Host (" " * $padLeft + $Color + $Text + $Reset)
 }
 
 function Write-LeftAligned {
-    param(
-        [string]$Text,
-        [int]$Indent = 2
-    )
-    # Rule 3 & 4: Left-align with 2 spaces indentation
+    param([string]$Text, [int]$Indent = 2)
     Write-Host (" " * $Indent + $Text)
 }
 
-function Write-Header {
-    param([string]$Title)
-    $Width = 60
-    $Pad = [Math]::Max(0, [Math]::Floor(($Width - $Title.Length) / 2))
-    $Line = "$FGDarkBlue$([string]$Char_EmDash * $Width)$Reset"
+function Write-FlexLine {
+    param(
+        [string]$LeftIcon,
+        [string]$LeftText,
+        [string]$RightText,
+        [bool]$IsActive,
+        [int]$Width = 60
+    )
     
-    # Print Top Line, Centered Title, Sub-Header
-    Write-Host $Line
-    Write-Host (" " * $Pad + "$Bold$FGCyan$Title$Reset")
+    # Construct Left Side (Icon + Text)
+    # Left side (Icon and Text) Gray ($FGGray)
+    $LeftDisplay = "$FGGray$LeftIcon $FGGray$LeftText$Reset"
+    $LeftRaw = "$LeftIcon $LeftText"
     
-    $SubText = "Patch-W11 "
-    $SubIcon = "$Char_Loop"
-    $SubPad = [Math]::Max(0, [Math]::Floor(($Width - ($SubText.Length + 1)) / 2)) # Approx width fix for icon
-    Write-Host (" " * $SubPad + "$Bold$FGDarkCyan$SubText$FGBlue$SubIcon$Reset")
-    Write-Host $Line
+    # Construct Right Side based on Active state
+    if ($IsActive) {
+        # Active: "On"
+        # Toggle: "   " (3 spaces) where ALL 3 spaces have Bg color DarkGreen
+        # Visual: [DarkGrayBG]On[Reset][GreenBG]   [Reset][NormalSpace]
+        $RightDisplay = "$BGDarkGray$FGGray$RightText$Reset$BGDarkGreen   $Reset "
+        $RightRaw = "$RightText    " 
+    } else {
+        # Inactive: Standard Red Cross format
+        $RightDisplay = "$FGDarkRed$Char_XSquare $FGDarkCyan Off$Reset"
+        $RightRaw = "$Char_XSquare  Off"
+    }
+
+    # Calculate Spacing
+    # Indent 3
+    # SpaceCount = Width - (Indent(3) + LeftLen + RightLen)
+    $SpaceCount = $Width - ($LeftRaw.Length + $RightRaw.Length + 3)
+    if ($SpaceCount -lt 1) { $SpaceCount = 1 }
+    
+    # Leading indent string is 3 spaces "   "
+    Write-Host ("   " + $LeftDisplay + (" " * $SpaceCount) + $RightDisplay)
+}
+
+function Write-TopHeader {
+    Write-Host ""
+    
+    # UPDATED: Patch-W11 on top (Cyan)
+    $TitleText = "$Char_Loop Patch-W11"
+    Write-Centered $TitleText -Color "$Bold$FGCyan"
+
+    # UPDATED: Configurator line below (DarkCyan)
+    Write-Centered "$Char_EmDash$Char_EmDash WINDOWS UPDATE CONFIGURATOR $Char_EmDash$Char_EmDash" -Color "$Bold$FGDarkCyan"
+    
+    Write-Host "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
 }
 
 function Write-BodyTitle {
     param([string]$Title)
-    # Rule 3: Body content Left-aligned
-    Write-LeftAligned "$Bold$FGWhite$Char_EmDash$Char_EmDash $Title $Char_EmDash$Char_EmDash$Reset"
+    # Rules v7.83 use EnDash for Body Titles
+    Write-LeftAligned "$Bold$FGWhite$Char_EnDash$Char_EnDash $Title $Char_EnDash$Char_EnDash$Reset"
 }
 
 function Write-Boundary {
@@ -89,19 +130,21 @@ function Write-Boundary {
 }
 
 function Get-StatusLine {
-    param(
-        [bool]$IsEnabled,
-        [string]$Text
-    )
-    
-    if ($IsEnabled) {
-        return "$FGDarkGreen$Char_BallotCheck  $FGDarkCyan$Text$Reset"
-    } else {
-        return "$FGDarkRed$Char_XSquare $FGDarkCyan$Text$Reset"
-    }
+    param([bool]$IsEnabled, [string]$Text)
+    if ($IsEnabled) { return "$FGDarkGreen$Char_BallotCheck  $FGDarkCyan$Text$Reset" } 
+    else { return "$FGDarkRed$Char_XSquare $FGDarkCyan$Text$Reset" }
 }
 
-# --- Original Registry Logic ---
+# --- Logging & Registry Functions ---
+
+function Write-Log {
+    param(
+        [Parameter(Mandatory)][string]$Message,
+        [ValidateSet('INFO','WARNING','ERROR','SUCCESS')][string]$Level = 'INFO'
+    )
+    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    Add-Content -Path $script:LogPath -Value "[$timestamp] [$Level] $Message" -ErrorAction SilentlyContinue
+}
 
 function Get-RegistryValue {
     param([Parameter(Mandatory)] [string]$Path, [Parameter(Mandatory)] [string]$Name)
@@ -116,8 +159,14 @@ function Get-RegistryValue {
 
 function Set-RegistryDword {
     param([Parameter(Mandatory)] [string]$Path, [Parameter(Mandatory)] [string]$Name, [Parameter(Mandatory)] [int]$Value)
-    if (-not (Test-Path $Path)) { New-Item -Path $Path -Force | Out-Null }
-    New-ItemProperty -Path $Path -Name $Name -PropertyType DWord -Value $Value -Force | Out-Null
+    try {
+        if (-not (Test-Path $Path)) { New-Item -Path $Path -Force | Out-Null }
+        New-ItemProperty -Path $Path -Name $Name -PropertyType DWord -Value $Value -Force | Out-Null
+        Write-Log -Message "Set registry: $Path\$Name = $Value" -Level SUCCESS
+    } catch {
+        Write-Log -Message "Failed to set registry: $Path\$Name - $($_.Exception.Message)" -Level ERROR
+        throw $_ 
+    }
 }
 
 # Registry Paths
@@ -126,36 +175,98 @@ $WU_POL = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
 $WINLOGON_USER = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" 
 $WINLOGON_MACHINE = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
 
+function Write-Header {
+    param([string]$Title)
+    Write-Host "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
+    Write-Centered $Title -Color "$Bold$FGCyan"
+    Write-Host "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
+}
+
 function Show-WUStatus {
-    Write-Header "WINDOWS UPDATE SETTINGS"
+    # UPDATED: Removed boundary line above Windows Update
+    # UPDATED: Windows Update is White
+    Write-Host " $Bold$FGWhite Windows Update$Reset"
+    
+    # --- Status Check (Moved to Top) ---
+    $status_WindowsUpdate = "Updates available"
+    $status_Color = $FGDarkYellow
+    $status_Icon = $Char_Warn
+    $LastSearchStr = "Unknown"
+    
+    try {
+        # Quick check using COM
+        $UpdateSession = New-Object -ComObject Microsoft.Update.Session
+        $UpdateSearcher = $UpdateSession.CreateUpdateSearcher()
+        $UpdateSearcher.Online = $false # Try offline first for speed
+        
+        # Get count
+        $SearchResult = $UpdateSearcher.Search("IsInstalled=0")
+        if ($SearchResult.Updates.Count -eq 0) {
+            $status_WindowsUpdate = "You're up to date"
+            # UPDATED: Fg White for "You're up to date" (and Icon)
+            $status_Color = $FGWhite
+            $status_Icon = $Char_Loop
+        }
+        
+        # Get Last Search Time
+        $AutoUpdate = New-Object -ComObject Microsoft.Update.AutoUpdate
+        $LastSearch = $AutoUpdate.Results.LastSearchSuccessDate
+        if ($LastSearch) {
+             $LastSearchStr = $LastSearch.ToString()
+        }
+    } catch {
+        $status_WindowsUpdate = "Check status failed"
+        $status_Color = $FGDarkRed
+        $status_Icon = $Char_XSquare
+    }
+    
+    # Print Status immediately below header
+    Write-Host ""
+    Write-LeftAligned "$status_Color$status_Icon $status_WindowsUpdate$Reset"
+    Write-LeftAligned "$FGGray Last checked: $LastSearchStr$Reset"
+    
+    Write-Log -Message "Starting Windows Update status check" -Level INFO
 
     Write-Host ""
-    Write-BodyTitle "More options"
+    # UPDATED: Changed > More options to Just More options, White
+    Write-LeftAligned "$Bold$FGWhite More options$Reset"
+    
     $continuous = Get-RegistryValue -Path $WU_UX -Name "IsContinuousInnovationOptedIn"
-    Write-LeftAligned (Get-StatusLine ($continuous -eq 1) "Get latest updates as soon as possible")
+    
+    # 1. Get latest updates (Speaker Icon) - Gray, 3-space indent
+    Write-FlexLine -LeftIcon $Char_Speaker -LeftText "Get latest updates as soon as possible" -RightText "On" -IsActive ($continuous -eq 1)
 
     Write-Host ""
-    Write-BodyTitle "Advanced options"
+    # Title Changed: Icon + Text (No dashes), removed leading space, White
+    Write-LeftAligned "$Bold$FGWhite$Char_Gear  Advanced options $Reset"
+    
+    # 2. Receive updates (Loop Icon) - Gray, 3-space indent
     $mu = Get-RegistryValue -Path $WU_UX  -Name "AllowMUUpdateService"
-    Write-LeftAligned (Get-StatusLine ($mu -eq 1) "Receive updates for other Microsoft products")
+    Write-FlexLine -LeftIcon $Char_Loop -LeftText "Receive updates for other Microsoft products" -RightText "On" -IsActive ($mu -eq 1)
 
+    # 3. Notify me (Bell Icon) - Gray, 3-space indent
     $restartNotify = Get-RegistryValue -Path $WU_UX -Name "RestartNotificationsAllowed2"
-    Write-LeftAligned (Get-StatusLine ($restartNotify -eq 1) "Notify me when a restart is required")
+    Write-FlexLine -LeftIcon $Char_Bell -LeftText "Notify me when a restart is required" -RightText "On" -IsActive ($restartNotify -eq 1)
 
+    # 4. Active hours (Stopwatch Icon)
+    # UPDATED: Stopwatch icon is Gray. Indentation increased to 3 (Indent=3).
     $ahs = Get-RegistryValue -Path $WU_UX -Name "ActiveHoursStart"
     $ahe = Get-RegistryValue -Path $WU_UX -Name "ActiveHoursEnd"
     if ($ahs -ne $null -and $ahe -ne $null) {
-        Write-LeftAligned "$FGGray  Active hours: ${ahs}:00 - ${ahe}:00$Reset"
+        Write-LeftAligned "$FGGray$Char_Stopwatch $FGGray Active hours: ${ahs}:00 - ${ahe}:00$Reset" -Indent 3
     } else {
-        Write-LeftAligned "$FGGray  Active hours: Auto (based on device activity)$Reset"
+        Write-LeftAligned "$FGGray$Char_Stopwatch $FGGray Active hours: Auto$Reset" -Indent 3
     }
     
     Write-Host ""
-    Write-BodyTitle "Sign-in options"
-    $restartApps = Get-RegistryValue -Path $WINLOGON_USER -Name "RestartApps"
-    Write-LeftAligned (Get-StatusLine ($restartApps -eq 1) "Automatically save restartable apps")
+    # Title Changed: Accounts > Sign-in options, White
+    Write-LeftAligned "$Bold$FGWhite$Char_User Accounts >  Sign-in options$Reset"
     
-    # Logic for "Use sign-in info" (ARSO)
+    # 5. Automatically save restartable apps - Gray, 3-space indent
+    $restartApps = Get-RegistryValue -Path $WINLOGON_USER -Name "RestartApps"
+    Write-FlexLine -LeftIcon ">" -LeftText "Automatically save restartable apps" -RightText "On" -IsActive ($restartApps -eq 1)
+    
+    # 6. Use sign-in info - Gray, 3-space indent
     $arsoEnabled = $false
     try {
         $UserSID = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
@@ -164,57 +275,86 @@ function Show-WUStatus {
             $optOut = Get-RegistryValue -Path $userArsoPath -Name "OptOut"
             $arsoEnabled = ($optOut -ne $null -and $optOut -eq 0)
         }
-        Write-LeftAligned (Get-StatusLine $arsoEnabled "Use sign-in info to finish setup after update")
-    } catch {
-        Write-LeftAligned "$FGDarkRed$Char_XSquare $FGGray Use sign-in info (Check Failed)$Reset"
-    }
+    } catch { $arsoEnabled = $false }
+    
+    Write-FlexLine -LeftIcon ">" -LeftText "Use sign-in info to finish setup after update" -RightText "On" -IsActive $arsoEnabled
 
-    Write-Host ""
-    Write-BodyTitle "Policy inspection"
-    $pol_mu = Get-RegistryValue -Path $WU_POL -Name "AllowMUUpdateService"
-    if ($pol_mu -ne $null) { 
-        Write-LeftAligned "$FGGray Policy enforces Microsoft Update: $pol_mu$Reset"
-    } else { 
-        Write-LeftAligned "$FGGray No policy enforcement detected$Reset"
-    }
+    # Current Status section removed from bottom
+
     Write-Host ""
     Write-Boundary $FGDarkGray
 }
 
 function Set-WUSettings {
     try {
-        # Configuring More options
+        Write-Log -Message "Applying Windows Update configurations" -Level INFO
         Set-RegistryDword -Path $WU_UX -Name "IsContinuousInnovationOptedIn" -Value 1
-
-        # Configuring Advanced options
         Set-RegistryDword -Path $WU_UX -Name "AllowMUUpdateService" -Value 1
         Set-RegistryDword -Path $WU_UX -Name "RestartNotificationsAllowed2" -Value 1
         
-        # Configuring Sign-in options
         try {
             Set-RegistryDword -Path $WINLOGON_USER -Name "RestartApps" -Value 1
-            
             $policyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
             $policyName = "DisableAutomaticRestartSignOn"
             $policyValue = Get-RegistryValue -Path $policyPath -Name $policyName
 
             if ($null -ne $policyValue -and $policyValue -eq 1) {
-                # Policy blocking, skip
+                Write-Log -Message "ARSO blocked by policy" -Level WARNING
             } else {
                 $UserSID = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
                 if (-not $UserSID) { throw "Could not determine current user's SID." }
                 $userArsoPath = "$WINLOGON_MACHINE\UserARSO\$UserSID"
                 Set-RegistryDword -Path $WINLOGON_MACHINE -Name "ARSOUserConsent" -Value 1
-                New-Item -Path $userArsoPath -Force -ErrorAction Stop | Out-Null
+                if (-not (Test-Path $userArsoPath)) { New-Item -Path $userArsoPath -Force -ErrorAction Stop | Out-Null }
                 Set-RegistryDword -Path $userArsoPath -Name "OptOut" -Value 0
             }
         } catch {
-             Write-LeftAligned "$FGDarkRed$Char_Warn Failed to set user sign-in options$Reset"
+             Write-Log -Message "Failed to set user sign-in options: $($_.Exception.Message)" -Level ERROR
         }
     }
     catch {
-        Write-LeftAligned "$FGDarkRed$Char_Warn Error applying settings: $($_.Exception.Message)$Reset"
+        Write-Log -Message "Error applying settings: $($_.Exception.Message)" -Level ERROR
     }
+}
+
+function Invoke-COMUpdateCheck {
+    Write-Host ""
+    Write-Header "UPDATE SEARCH (COM)"
+
+    try {
+        Write-LeftAligned "$FGYellow Contacting Windows Update Service...$Reset"
+        Write-Log -Message "Initializing COM Update Searcher" -Level INFO
+        
+        $UpdateSession = New-Object -ComObject Microsoft.Update.Session
+        $UpdateSearcher = $UpdateSession.CreateUpdateSearcher()
+        
+        $SearchResult = $UpdateSearcher.Search("IsInstalled=0")
+        $PendingUpdates = $SearchResult.Updates.Count
+        
+        if ($PendingUpdates -eq 0) {
+            Write-LeftAligned "$FGDarkGreen$Char_BallotCheck System is up to date.$Reset"
+            Write-Log -Message "COM Search: No updates found" -Level SUCCESS
+        } else {
+            Write-LeftAligned "$FGDarkYellow$Char_Warn Updates available: $PendingUpdates$Reset"
+            Write-Log -Message "COM Search: $PendingUpdates updates found" -Level INFO
+            
+            Write-Host ""
+            Write-LeftAligned "$Bold$FGWhite Available updates:$Reset"
+            foreach ($Update in $SearchResult.Updates) {
+                Write-LeftAligned "  $Char_Finger $($Update.Title)"
+                Write-Log -Message "Available: $($Update.Title)" -Level INFO
+            }
+        }
+        
+        $TotalHistory = $UpdateSearcher.GetTotalHistoryCount()
+        Write-Host ""
+        Write-LeftAligned "$FGGray History: $TotalHistory updates recorded.$Reset"
+        
+    } catch {
+        Write-LeftAligned "$FGDarkRed$Char_Warn Error checking status: $($_.Exception.Message)$Reset"
+        Write-Log -Message "COM Check Error: $($_.Exception.Message)" -Level ERROR
+    }
+    Write-Boundary $FGDarkGray
 }
 
 function Invoke-MSStoreUpdateCheck {
@@ -226,10 +366,12 @@ function Invoke-MSStoreUpdateCheck {
         Add-Type -AssemblyName UIAutomationTypes
     } catch {
         Write-LeftAligned "$FGDarkYellow$Char_Warn Failed to load UI Automation assemblies$Reset"
+        Write-Log -Message "Failed to load UI Automation assemblies" -Level ERROR
         return
     }
 
     Write-LeftAligned "$FGYellow Opening Microsoft Store to check for app updates...$Reset"
+    Write-Log -Message "Attempting to open Microsoft Store for updates" -Level INFO
     Start-Process "ms-windows-store://downloadsandupdates"
     Start-Sleep -Seconds 5
 
@@ -240,6 +382,7 @@ function Invoke-MSStoreUpdateCheck {
         
         if ($storeWindow -eq $null) {
             Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find Microsoft Store window$Reset"
+            Write-Log -Message "Microsoft Store window not found" -Level WARNING
             return
         }
         
@@ -257,6 +400,7 @@ function Invoke-MSStoreUpdateCheck {
                 if ($invokePattern -ne $null) {
                     $invokePattern.Invoke()
                     Write-LeftAligned "$FGDarkGreen$Char_BallotCheck Successfully clicked '$buttonText'$Reset"
+                    Write-Log -Message "Clicked '$buttonText' in Microsoft Store" -Level SUCCESS
                     $buttonFound = $true
                     break
                 }
@@ -265,17 +409,19 @@ function Invoke-MSStoreUpdateCheck {
         
         if (-not $buttonFound) {
             Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find update button$Reset"
+            Write-Log -Message "Could not find update button in Store" -Level WARNING
         }
         
     } catch {
         Write-LeftAligned "$FGDarkYellow$Char_Warn UI Automation Error$Reset"
+        Write-Log -Message "UI Automation Error in Store: $($_.Exception.Message)" -Level ERROR
     }
     Write-Boundary $FGDarkGray
 }
 
 function Invoke-WinUpdateCheck {
     Write-Host ""
-    Write-Header "WINDOWS UPDATE CHECK"
+    Write-Header "WINDOWS UPDATE CHECK (GUI)"
 
     try {
         Add-Type -AssemblyName UIAutomationClient
@@ -286,6 +432,7 @@ function Invoke-WinUpdateCheck {
     }
 
     Write-LeftAligned "$FGYellow Opening Windows Update settings...$Reset"
+    Write-Log -Message "Attempting to open Windows Update settings" -Level INFO
     Start-Process "ms-settings:windowsupdate"
     Start-Sleep -Seconds 5
 
@@ -296,6 +443,7 @@ function Invoke-WinUpdateCheck {
         
         if ($settingsWindow -eq $null) {
             Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find Settings window$Reset"
+            Write-Log -Message "Settings window not found" -Level WARNING
             return
         }
         
@@ -313,6 +461,7 @@ function Invoke-WinUpdateCheck {
                 if ($invokePattern -ne $null) {
                     $invokePattern.Invoke()
                     Write-LeftAligned "$FGDarkGreen$Char_BallotCheck Successfully clicked '$text'$Reset"
+                    Write-Log -Message "Clicked '$text' in Windows Update" -Level SUCCESS
                     $buttonFound = $true
                     break
                 }
@@ -321,44 +470,47 @@ function Invoke-WinUpdateCheck {
         
         if (-not $buttonFound) {
              Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find update buttons$Reset"
+             Write-Log -Message "Could not find update buttons in Settings" -Level WARNING
         }
         
     } catch {
         Write-LeftAligned "$FGDarkYellow$Char_Warn UI Automation Error$Reset"
+        Write-Log -Message "UI Automation Error in Settings: $($_.Exception.Message)" -Level ERROR
     }
     Write-Boundary $FGDarkGray
 }
 
 # --- Main ---
-Write-Header "WINDOWS UPDATE CONFIGURATOR"
-
+Write-TopHeader
 Set-WUSettings
 Show-WUStatus
 
 # --- User Prompt ---
 Write-Host ""
-# Icons and Colors matched to scriptRULES-W11.ps1
-$prompt = "${FGDarkCyan}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Enter${FGDarkCyan} to Run Checks  |  Press ${FGYellow}$Char_Finger Spacebar${FGDarkCyan} to Skip$Reset"
+# UPDATED: Keys use FGBlack + BGYellow
+$prompt = "${FGDarkCyan}$Char_Keyboard  ${FGYellow}Press ${FGBlack}${BGYellow}$Char_Finger Enter${Reset}${FGDarkCyan} to Run Checks  |  Press ${FGBlack}${BGYellow}$Char_Finger Spacebar${Reset}${FGDarkCyan} to Skip$Reset"
 Write-Centered $prompt
 
 do {
     $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 } while ($key.VirtualKeyCode -ne 13 -and $key.Character -ne ' ')
 
-if ($key.VirtualKeyCode -eq 13) { # 13 is Enter
+if ($key.VirtualKeyCode -eq 13) {
+    Invoke-COMUpdateCheck
     Invoke-MSStoreUpdateCheck
     Invoke-WinUpdateCheck
 } else {
     Write-Host ""
     Write-LeftAligned "$FGGray Skipping update checks.$Reset"
+    Write-Log -Message "User skipped update checks" -Level INFO
 }
 
 # Footer
 Write-Host ""
-$lastEditedTimestamp = "2025-11-25"
+# UPDATED: DarkBlue separator above footer
 Write-Boundary $FGDarkBlue
-Write-Centered "$FGDarkCyan$Char_Copyright $lastEditedTimestamp, www.AIIT.support$Reset"
-# Write-Boundary $FGDarkBlue # Removed bottom boundary to match typical Install script footer style if preferred, otherwise keep. Kept simple.
+# UPDATED: Cyan Footer text
+Write-Centered "$FGCyan$Char_Copyright 2025, www.AIIT.support. All Rights Reserved.$Reset"
 
 # Exit Spacing
 1..5 | ForEach-Object { Write-Host "" }
