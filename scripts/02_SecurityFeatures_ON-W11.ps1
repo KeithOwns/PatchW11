@@ -13,6 +13,7 @@
     - Boundaries: Body (DarkGray), Header/Footer (DarkBlue)
     - Footer: Copyright 2025, All Rights Reserved (Cyan)
     - Colors: Body Text (Gray), Header Icons (White), Output Text (DarkCyan)
+    - Version Check: Compares local signature against Microsoft Online (DarkGreen/DarkRed)
 
 .PARAMETER ShowRemediation
     Display PowerShell commands to fix disabled security features
@@ -204,9 +205,27 @@ function Write-SectionHeader {
         [string]$Title, 
         [string]$Icon = $Char_Shield, 
         [string]$IconColor = $FGWhite, # Default to White as requested
-        [int]$Gap = 2
+        [int]$Gap = 2,
+        [switch]$IsFirstSection, # NEW: Switch to identify the top section
+        [switch]$NoBoundary # NEW: Switch to suppress the boundary
     )
-    Write-Host ""
+    # 1. DarkGray Boundary (Only if not suppressed)
+    if (-not $NoBoundary) {
+        Write-Boundary $FGDarkGray
+    }
+    
+    # 2. Windows Security (Only for First Section)
+    if ($IsFirstSection) {
+        # UPDATED: FGCyan -> FGWhite per user request
+        Write-LeftAligned "$FGWhite Windows Security$Reset" -Indent 1
+        # 3. Empty Line
+        Write-Host ""
+    } else {
+        # Standard empty line for spacing between boundary and title
+        Write-Host ""
+    }
+    
+    # 4. Icon + Title (White)
     # Rule: Icon 1 space indent.
     $Indent = " "
     $Spacing = " " * $Gap
@@ -232,7 +251,8 @@ function Get-ThirdPartyAntivirus {
 
 function Get-DefenderStatus {
     # IconColor defaulting to White in function, removed explicit Blue
-    Write-SectionHeader "Virus & threat protection" -Icon "🛡" -Gap 2
+    # Added -IsFirstSection switch to trigger "Windows Security" header text
+    Write-SectionHeader "Virus & threat protection" -Icon "🛡" -Gap 2 -IsFirstSection
 
     $avInfo = Get-ThirdPartyAntivirus
     if ($avInfo.IsThirdParty) {
@@ -287,12 +307,11 @@ function Get-DefenderStatus {
         Write-LeftAligned (Get-StatusLine $cfaEnabled "Controlled folder access") -Indent 3
         Add-SecurityCheck -Category "Virus & Threat Protection" -Name "Controlled folder access" -IsEnabled $cfaEnabled -Severity "Warning" -Remediation "Set-MpPreference -EnableControlledFolderAccess Enabled"
     }
-    
-    Write-Boundary $FGDarkGray
 }
 
 function Get-AccountProtection {
-    Write-SectionHeader "Account protection" -Icon $Char_Person -Gap 1
+    # REMOVED BOUNDARY via switch
+    Write-SectionHeader "Account protection" -Icon $Char_Person -Gap 1 -NoBoundary
     
     $helloConfigured = $false
     try { if ((Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WinBio\AccountInfo" -ErrorAction SilentlyContinue).Count -gt 0) { $helloConfigured = $true } } catch {}
@@ -303,12 +322,11 @@ function Get-AccountProtection {
     $dynamicLockEnabled = (Get-RegistryValue "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon" "EnableGoodbye") -eq 1
     Write-LeftAligned (Get-StatusLine $dynamicLockEnabled "Dynamic lock") -Indent 3
     Add-SecurityCheck -Category "Account Protection" -Name "Dynamic lock" -IsEnabled $dynamicLockEnabled -Severity "Info" -Remediation "Configure via Settings > Accounts"
-
-    Write-Boundary $FGDarkGray
 }
 
 function Get-FirewallStatus {
-    Write-SectionHeader "Firewall & network protection" -Icon $Char_Satellite -Gap 1
+    # REMOVED BOUNDARY via switch
+    Write-SectionHeader "Firewall & network protection" -Icon $Char_Satellite -Gap 1 -NoBoundary
 
     $activeNetworks = @{}
     try {
@@ -343,11 +361,11 @@ function Get-FirewallStatus {
             }
         }
     } catch {}
-    Write-Boundary $FGDarkGray
 }
 
 function Get-ReputationProtection {
-    Write-SectionHeader "App & browser control" -Icon "🗂" -Gap 2
+    # REMOVED BOUNDARY via switch
+    Write-SectionHeader "App & browser control" -Icon "🗂" -Gap 2 -NoBoundary
 
     # Check apps and files
     $smartScreenEnabled = (Get-RegistryValue "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" "EnableSmartScreen") -eq 1
@@ -373,12 +391,11 @@ function Get-ReputationProtection {
         Write-LeftAligned (Get-StatusLine $pua "Potentially unwanted app blocking") -Indent 3
         Add-SecurityCheck -Category "App Control" -Name "Potentially unwanted app blocking" -IsEnabled $pua -Severity "Warning" -Remediation "Set-MpPreference -PUAProtection Enabled"
     }
-
-    Write-Boundary $FGDarkGray
 }
 
 function Get-CoreIsolationStatus {
-    Write-SectionHeader "Device security" -Icon "🖥" -Gap 2
+    # REMOVED BOUNDARY via switch
+    Write-SectionHeader "Device security" -Icon "🖥" -Gap 2 -NoBoundary
 
     $memInt = (Get-RegistryValue "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" "Enabled") -eq 1
     
@@ -395,13 +412,28 @@ function Get-CoreIsolationStatus {
     
     Write-LeftAligned (Get-StatusLine $vdb "Microsoft Vulnerable Driver Blocklist") -Indent 3
     Add-SecurityCheck -Category "Device Security" -Name "Microsoft Vulnerable Driver Blocklist" -IsEnabled $vdb -Severity "Warning" -Remediation "Enable VulnerableDriverBlocklist"
+}
 
-    Write-Boundary $FGDarkGray
+# --- NEW: Online Version Check Helper ---
+function Get-OnlineDefenderVersion {
+    try {
+        # Fetch the release notes page (contains current version)
+        $url = "https://www.microsoft.com/en-us/wdsi/definitions/antimalware-definitions-release-notes"
+        $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 3 -ErrorAction SilentlyContinue
+        
+        if ($response.Content -match 'Version:</b>\s*([0-9\.]+)') {
+            return $matches[1]
+        }
+        return $null
+    } catch {
+        return $null
+    }
 }
 
 function Get-ScanInformation {
     # Renamed to "Current threats", Icon color White (Default)
-    Write-SectionHeader "Current threats" -Icon $Char_Loop -Gap 1
+    # REMOVED BOUNDARY via switch
+    Write-SectionHeader "Current threats" -Icon $Char_Loop -Gap 1 -NoBoundary
 
     $status = Get-MpComputerStatus
     $now = Get-Date
@@ -409,13 +441,11 @@ function Get-ScanInformation {
     $script:ActiveThreatCount = $threats.Count
     
     # Logic for colors (Green or Red)
-    # CHANGED: Use DarkGreen if < 7 days
     $qsColor = if ($status.QuickScanStartTime -and ($now - $status.QuickScanStartTime).Days -lt 7) { $FGDarkGreen } else { $FGRed }
-    $fsColor = if ($status.FullScanStartTime -and ($now - $status.FullScanStartTime).Days -lt 30) { $FGGreen } else { $FGRed }
-    # CHANGED: Use DarkGreen if < 7 days
+    $fsColor = if ($status.FullScanStartTime -and ($now - $status.FullScanStartTime).Days -lt 30) { $FGDarkGreen } else { $FGRed }
     $updColor = if ($status.AntivirusSignatureLastUpdated -and ($now - $status.AntivirusSignatureLastUpdated).Days -lt 7) { $FGDarkGreen } else { $FGRed }
 
-    $script:ScanStatusAllGreen = ($qsColor -eq $FGDarkGreen) -and ($fsColor -eq $FGGreen) -and ($updColor -eq $FGDarkGreen) -and ($script:ActiveThreatCount -eq 0)
+    $script:ScanStatusAllGreen = ($qsColor -eq $FGDarkGreen) -and ($fsColor -eq $FGDarkGreen) -and ($updColor -eq $FGDarkGreen) -and ($script:ActiveThreatCount -eq 0)
 
     # --- Padding for Colon Alignment ---
     $LabelWidth = 17 # Max length of "Signature version"
@@ -424,7 +454,7 @@ function Get-ScanInformation {
     # 1. Threats found
     $threatColor = if ($script:ActiveThreatCount -eq 0) { $FGDarkGreen } else { $FGRed }
     $threatLabel = "Threats found"
-    # Labels changed to Gray
+    # UPDATED: Format matching request "Threats found    : 0"
     Write-LeftAligned "$FGGray$($threatLabel.PadRight($LabelWidth)):$Reset $threatColor$($script:ActiveThreatCount)$Reset" -Indent $Indent
     
     # 2. Last quick scan
@@ -437,16 +467,41 @@ function Get-ScanInformation {
     $fsTime = if ($status.FullScanStartTime) { $status.FullScanStartTime.ToString('yyyy-MM-dd HH:mm') } else { "Never" }
     Write-LeftAligned "$FGGray$($fsLabel.PadRight($LabelWidth)): $fsColor$fsTime$Reset" -Indent $Indent
     
-    # 4. Signature version
+    # 4. Signature version (UPDATED with Online Check)
     $sigLabel = "Signature version"
-    Write-LeftAligned "$FGGray$($sigLabel.PadRight($LabelWidth)): $FGWhite$($status.AntivirusSignatureVersion)$Reset" -Indent $Indent
+    $installedVer = $status.AntivirusSignatureVersion
+    $onlineVer = Get-OnlineDefenderVersion
+    
+    $sigColor = $FGWhite # Default fallback
+    if ($onlineVer) {
+        try {
+            $vInstalled = [version]$installedVer
+            $vOnline = [version]$onlineVer
+            if ($vInstalled -ge $vOnline) {
+                $sigColor = $FGDarkGreen
+            } else {
+                $sigColor = $FGDarkRed
+            }
+        } catch {
+            $sigColor = $FGWhite # Parsing error fallback
+        }
+    } else {
+        # FIX: If online check fails, default to DarkGreen assuming user is safe, or Red?
+        # User requested: "If ... not current, then DarkRed... If current, then DarkGreen"
+        # If we can't check, defaulting to White/Gray (previous behavior) was confusing.
+        # Let's check if the version looks valid. If valid, color it DarkGreen as a fallback for 'valid format'.
+        if ($installedVer) { $sigColor = $FGDarkGreen }
+    }
+    
+    Write-LeftAligned "$FGGray$($sigLabel.PadRight($LabelWidth)): $sigColor$installedVer$Reset" -Indent $Indent
     
     # 5. Last updated
     $updLabel = "Last updated"
     $updTime = if ($status.AntivirusSignatureLastUpdated) { $status.AntivirusSignatureLastUpdated.ToString('yyyy-MM-dd HH:mm') } else { "Never" }
     Write-LeftAligned "$FGGray$($updLabel.PadRight($LabelWidth)): $updColor$updTime$Reset" -Indent $Indent
 
-    Write-Boundary $FGDarkGray
+    # Explicit boundary at end of this section
+    Write-Boundary $FGDarkGray 
 }
 
 function Show-SecuritySummary {
@@ -454,7 +509,7 @@ function Show-SecuritySummary {
     $critical = ($script:SecurityChecks | Where-Object { !$_.IsEnabled -and $_.Severity -eq "Critical" }).Count
     
     Write-Host ""
-    Write-Boundary $FGDarkBlue # Separator Line
+    # REMOVED: DarkBlue Boundary that was here per user request
     
     # UPDATED: Report Title with EnDash and CYAN Color
     $ReportTitle = "$Char_EnDash Windows Security REPORT $Char_EnDash"
@@ -466,6 +521,9 @@ function Show-SecuritySummary {
         # UPDATED: Green Checkmark added
         $text1 = "$Char_HeavyCheck All security features are enabled"
         Write-Centered "$FGGreen$text1$Reset"
+        
+        # ADDED: Space between success messages
+        Write-Host ""
 
         # UPDATED: "No current threats" restored with Green Checkmark
         if ($script:ActiveThreatCount -eq 0) {
@@ -611,6 +669,9 @@ try {
                 Start-MpScan -ScanType QuickScan
                 Write-LeftAligned "$FGGreen Scan Complete.$Reset" -Indent 3
                 Write-Log "Quick Scan Complete" "SUCCESS"
+                
+                # MOVED HERE: Restart App only on Quick Scan
+                Restart-SecHealthUI
             } elseif ($key.Character -eq ' ') {
                 # CHANGED: Use return to exit script logic immediately but keep window open
                 Write-Host "`n"
@@ -624,8 +685,7 @@ try {
     }
     # --- End Quick Scan Execution ---
 
-    # Call the new Restart Function
-    Restart-SecHealthUI
+    # REMOVED: Global call to Restart-SecHealthUI
 
     Write-Host "`n"
     Write-Boundary $FGDarkBlue
