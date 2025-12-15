@@ -16,7 +16,7 @@
 
 .NOTES
     Author: PatchW11 Team
-    Version: 7.83 (Changed Copyright to Cyan)
+    Version: 7.84 (DarkCyan Copyright, White Indented Separator, Default_String)
     Repository: https://github.com/KeithOwns/PatchW11
 #>
 
@@ -81,7 +81,9 @@ function Write-Row {
     $Width_ANSI        = 7  
     $Width_About       = 7
     $Width_Type        = 9
-    $Width_DefaultString = 22 # Fixed width for centering calculation
+    
+    # Width 14 to fit "Default_String" (14 chars) exactly
+    $Width_DefaultString = 14 
     
     # Apply dynamic color to TextColor and pad the result (11 characters) - RIGHT ALIGNED
     $CNameUncoloredPadded = $ColorName.PadLeft($Width_TextColor)
@@ -95,7 +97,7 @@ function Write-Row {
     $CleanDefaultString = $DefaultString -replace "$Esc\[[^m]*m", ""
     $ContentLength = $CleanDefaultString.Length
     
-    # Calculate left padding to center the string in a 22-char field
+    # Calculate left padding to center the string in a 14-char field
     $PadLeftVal = [Math]::Max(0, [Math]::Floor(($Width_DefaultString - $ContentLength) / 2))
     
     # Assemble the output line (5 columns)
@@ -159,17 +161,15 @@ function Show-VisualExamples {
     $Header_Type      = "Type".PadRight(9)
     
     # Center DefaultString Header
-    $DefaultStringText = "DefaultString"
-    $Width_DefaultString = 22
+    $DefaultStringText = "Default_String" # Changed from DefaultString
+    $Width_DefaultString = 14
     $PadLeftHeader = [Math]::Max(0, [Math]::Floor(($Width_DefaultString - $DefaultStringText.Length) / 2))
     $Header_DefaultString = (" " * $PadLeftHeader) + $DefaultStringText
     
     # 1 Space leading indentation (was 2)
-    # Removed ANSIBg header
     Write-Output " ${FGGray}$Header_TextColor $Header_ANSI$Header_About $Header_Type   $Header_DefaultString$Reset"
 
-    # Table Separator (White, Indented, 56 chars)
-    # Replaced full width DarkGray separator with White indented separator
+    # Table Separator (White, Indented, 56 chars) - CHANGE 2
     Write-Output "$FGWhite  $([string]$Char_EmDash * 56)  $Reset"
 
     # --- ROW DATA ---
@@ -182,7 +182,6 @@ function Show-VisualExamples {
     $BoundaryString = [string]$Char_EmDash * 15
 
     # 1. Cyan (Header Title)
-    # PatchW11 reverted to default BG/Cyan Fg.
     $CyanDefaultString = "$Char_EmDash$Char_EmDash PatchW11 $Char_EmDash$Char_EmDash"
     Write-Row "Cyan"       "\e[96m" "Hdr/Ftr" "Title"    $HexEmDash $CyanDefaultString $FGCyan
     
@@ -221,10 +220,10 @@ function Show-VisualExamples {
     $YellowDefaultString = "$Char_Finger ${FGBlack}${BGYellow}[Key]"
     Write-Row "Yellow"     "\e[93m" "Input"  "Keypress" "0x261B" $YellowDefaultString $FGYellow
 
-    # ADDED EMPTY LINE BELOW YELLOW
+    # ADDED EMPTY LINE BELOW YELLOW - CHANGE 3
     Write-Output ""
 
-    # DarkGray Separator Line (60 em dashes) - Placed below Yellow Input row
+    # DarkGray Separator Line (60 em dashes)
     Write-Output "$FGDarkGray$([string]$Char_EmDash * 60)$Reset"
     
     # --- PART 2: SCRIPT OUTPUT DEFAULTS (HIDDEN BY DEFAULT) ---
@@ -262,11 +261,11 @@ if ($ShowRules) {
     # Add DarkBlue Separator above Copyright
     Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
 
-    # Display Copyright Footer (Centered and Cyan)
+    # Display Copyright Footer (Centered and DarkCyan) - CHANGE 1
     $FooterText = "$Char_Copyright 2025, www.AIIT.support. All Rights Reserved."
     $FooterPadding = [Math]::Floor((60 - $FooterText.Length) / 2)
     Write-Output ""
-    Write-Host (" " * $FooterPadding + $FooterText) -ForegroundColor Cyan
+    Write-Host (" " * $FooterPadding + $FooterText) -ForegroundColor DarkCyan
     
 } else {
     # 1. Initial State (Rules Hidden)
@@ -287,11 +286,11 @@ if ($ShowRules) {
     # Add DarkBlue Separator above Copyright
     Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
 
-    # 3. Copyright (Cyan, Centered, below Prompt)
+    # 3. Copyright (DarkCyan, Centered, below Prompt) - CHANGE 1
     Write-Output ""
     $FooterText = "$Char_Copyright 2025, www.AIIT.support. All Rights Reserved."
     $FooterPadding = [Math]::Floor((60 - $FooterText.Length) / 2)
-    Write-Host (" " * $FooterPadding + $FooterText) -ForegroundColor Cyan
+    Write-Host (" " * $FooterPadding + $FooterText) -ForegroundColor DarkCyan
 
     # 4. Wait for key
     $key = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -299,12 +298,12 @@ if ($ShowRules) {
         # 5. Show Rules State (Rules Visible)
         Show-VisualExamples -ShowFormattingRules $true
 
-        # Add DarkBlue Separator above Copyright (ADDED FOR RE-DISPLAY)
+        # Add DarkBlue Separator above Copyright
         Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
 
         # Redisplay Copyright (ALWAYS LAST)
         Write-Output ""
-        Write-Host (" " * $FooterPadding + $FooterText) -ForegroundColor Cyan
+        Write-Host (" " * $FooterPadding + $FooterText) -ForegroundColor DarkCyan
     }
 }
 
