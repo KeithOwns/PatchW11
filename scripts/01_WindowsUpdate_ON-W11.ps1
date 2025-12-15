@@ -171,7 +171,6 @@ function Write-Header {
 }
 
 function Show-WUStatus {
-    # ADDED: Single Fg DarkGray Boundary line just above "Windows Update"
     Write-Boundary $FGDarkGray
 
     Write-Host " $Bold$FGWhite Windows Update$Reset"
@@ -342,47 +341,57 @@ function Invoke-MSStoreUpdateCheck {
     Write-LeftAligned "$FGGray Opening Microsoft Store to check for app updates...$Reset"
     Write-Log -Message "Attempting to open Microsoft Store for updates" -Level INFO
     Start-Process "ms-windows-store://downloadsandupdates"
-    Start-Sleep -Seconds 5
-
-    try {
+    
+    # IMPLEMENTATION OF SUGGESTION #2: DYNAMIC WAIT (10s Timeout)
+    $timeout = 10
+    $startTime = Get-Date
+    $storeWindow = $null
+    
+    do {
         $desktop = [System.Windows.Automation.AutomationElement]::RootElement
         $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, "Microsoft Store")
         $storeWindow = $desktop.FindFirst([System.Windows.Automation.TreeScope]::Children, $condition)
+        if ($storeWindow -ne $null) { break }
+        Start-Sleep -Milliseconds 500
+    } while ((Get-Date) -lt $startTime.AddSeconds($timeout))
+
+    if ($storeWindow -eq $null) {
+        Write-LeftAligned "$FGRed$Char_RedCross Could not find Microsoft Store window$Reset"
+        Write-Log -Message "Microsoft Store window not found" -Level WARNING
+        return
+    }
+    
+    # Small buffer after window is found to ensure elements load
+    Start-Sleep -Seconds 2
+    
+    $buttonTexts = @("Get updates", "Check for updates", "Update all")
+    $buttonFound = $false
+    
+    foreach ($buttonText in $buttonTexts) {
+        $buttonCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $buttonText)
+        $button = $storeWindow.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $buttonCondition)
         
-        if ($storeWindow -eq $null) {
-            Write-LeftAligned "$FGRed$Char_RedCross Could not find Microsoft Store window$Reset"
-            Write-Log -Message "Microsoft Store window not found" -Level WARNING
-            return
-        }
-        
-        Start-Sleep -Seconds 5
-        
-        $buttonTexts = @("Get updates", "Check for updates", "Update all")
-        $buttonFound = $false
-        
-        foreach ($buttonText in $buttonTexts) {
-            $buttonCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $buttonText)
-            $button = $storeWindow.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $buttonCondition)
-            
-            if ($button -ne $null) {
-                $invokePattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
-                if ($invokePattern -ne $null) {
-                    $invokePattern.Invoke()
-                    Write-LeftAligned "$FGGreen$Char_HeavyCheck Successfully clicked '$buttonText'$Reset"
-                    $buttonFound = $true
-                    break
-                }
+        if ($button -ne $null) {
+            $invokePattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+            if ($invokePattern -ne $null) {
+                $invokePattern.Invoke()
+                Write-LeftAligned "$FGGreen$Char_HeavyCheck Successfully clicked '$buttonText'$Reset"
+                $buttonFound = $true
+                break
             }
         }
-        
-        if (-not $buttonFound) {
-            Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find update button$Reset"
-            Write-Log -Message "Could not find update button in Store" -Level WARNING
-        }
-        
-    } catch {
+    }
+    
+    if (-not $buttonFound) {
+        Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find update button$Reset"
+        Write-Log -Message "Could not find update button in Store" -Level WARNING
+    }
+    
+    # Error catching block for the whole function
+    trap {
         Write-LeftAligned "$FGRed$Char_RedCross UI Automation Error$Reset"
         Write-Log -Message "UI Automation Error in Store: $($_.Exception.Message)" -Level ERROR
+        continue
     }
 }
 
@@ -402,47 +411,57 @@ function Invoke-WinUpdateCheck {
     Write-LeftAligned "$FGGray Opening Windows Update settings...$Reset"
     Write-Log -Message "Attempting to open Windows Update settings" -Level INFO
     Start-Process "ms-settings:windowsupdate"
-    Start-Sleep -Seconds 5
-
-    try {
+    
+    # IMPLEMENTATION OF SUGGESTION #2: DYNAMIC WAIT (10s Timeout)
+    $timeout = 10
+    $startTime = Get-Date
+    $settingsWindow = $null
+    
+    do {
         $desktop = [System.Windows.Automation.AutomationElement]::RootElement
         $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, "Settings")
         $settingsWindow = $desktop.FindFirst([System.Windows.Automation.TreeScope]::Children, $condition)
+        if ($settingsWindow -ne $null) { break }
+        Start-Sleep -Milliseconds 500
+    } while ((Get-Date) -lt $startTime.AddSeconds($timeout))
+    
+    if ($settingsWindow -eq $null) {
+        Write-LeftAligned "$FGRed$Char_RedCross Could not find Settings window$Reset"
+        Write-Log -Message "Settings window not found" -Level WARNING
+        return
+    }
+    
+    # Small buffer for internal elements
+    Start-Sleep -Seconds 2
+    
+    $targetButtons = @("Check for updates", "Download & install all", "Install all", "Restart now")
+    $buttonFound = $false
+    
+    foreach ($text in $targetButtons) {
+        $buttonCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $text)
+        $button = $settingsWindow.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $buttonCondition)
         
-        if ($settingsWindow -eq $null) {
-            Write-LeftAligned "$FGRed$Char_RedCross Could not find Settings window$Reset"
-            Write-Log -Message "Settings window not found" -Level WARNING
-            return
-        }
-        
-        Start-Sleep -Seconds 2
-        
-        $targetButtons = @("Check for updates", "Download & install all", "Install all", "Restart now")
-        $buttonFound = $false
-        
-        foreach ($text in $targetButtons) {
-            $buttonCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $text)
-            $button = $settingsWindow.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $buttonCondition)
-            
-            if ($button -ne $null) {
-                $invokePattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
-                if ($invokePattern -ne $null) {
-                    $invokePattern.Invoke()
-                    Write-LeftAligned "$FGGreen$Char_HeavyCheck Successfully clicked '$text'$Reset"
-                    $buttonFound = $true
-                    break
-                }
+        if ($button -ne $null) {
+            $invokePattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+            if ($invokePattern -ne $null) {
+                $invokePattern.Invoke()
+                Write-LeftAligned "$FGGreen$Char_HeavyCheck Successfully clicked '$text'$Reset"
+                $buttonFound = $true
+                break
             }
         }
-        
-        if (-not $buttonFound) {
-             Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find update buttons$Reset"
-             Write-Log -Message "Could not find update buttons in Settings" -Level WARNING
-        }
-        
-    } catch {
+    }
+    
+    if (-not $buttonFound) {
+            Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find update buttons$Reset"
+            Write-Log -Message "Could not find update buttons in Settings" -Level WARNING
+    }
+    
+    # Error catching block
+    trap {
         Write-LeftAligned "$FGRed$Char_RedCross UI Automation Error$Reset"
         Write-Log -Message "UI Automation Error in Settings: $($_.Exception.Message)" -Level ERROR
+        continue
     }
 }
 
