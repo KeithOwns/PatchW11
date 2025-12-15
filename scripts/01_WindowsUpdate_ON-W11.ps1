@@ -180,6 +180,10 @@ function Show-WUStatus {
     $status_Icon = $Char_Warn
     $LastSearchStr = "Unknown"
     
+    # Defaults
+    $iconColor = $Char_Warn
+    $timestampColor = $FGGray
+    
     try {
         $UpdateSession = New-Object -ComObject Microsoft.Update.Session
         $UpdateSearcher = $UpdateSession.CreateUpdateSearcher()
@@ -194,8 +198,21 @@ function Show-WUStatus {
         
         $AutoUpdate = New-Object -ComObject Microsoft.Update.AutoUpdate
         $LastSearch = $AutoUpdate.Results.LastSearchSuccessDate
+        
         if ($LastSearch) {
              $LastSearchStr = $LastSearch.ToString()
+             
+             # Calculate 48 Hour Logic
+             $TimeDiff = (Get-Date) - $LastSearch
+             if ($TimeDiff.TotalHours -lt 48) {
+                 # < 48h: DarkGreen
+                 $iconColor = $FGDarkGreen
+                 $timestampColor = $FGDarkGreen
+             } else {
+                 # > 48h: DarkRed
+                 $iconColor = $FGDarkRed
+                 $timestampColor = $FGDarkRed
+             }
         }
     } catch {
         $status_WindowsUpdate = "Check status failed"
@@ -204,8 +221,11 @@ function Show-WUStatus {
     }
     
     Write-Host ""
-    Write-LeftAligned "$status_Color$status_Icon $status_WindowsUpdate$Reset"
-    Write-LeftAligned "$FGGray Last checked: $LastSearchStr$Reset"
+    # "Change only the "🔄" ... to DarkGreen/Red"
+    Write-LeftAligned "$iconColor$status_Icon $status_Color$status_WindowsUpdate$Reset"
+    
+    # "Last checked:" should always print in Fg Gray
+    Write-LeftAligned "$FGGray Last checked: $timestampColor$LastSearchStr$Reset"
     
     Write-Log -Message "Starting Windows Update status check" -Level INFO
 
@@ -342,7 +362,10 @@ function Invoke-MSStoreUpdateCheck {
     Write-Log -Message "Attempting to open Microsoft Store for updates" -Level INFO
     Start-Process "ms-windows-store://downloadsandupdates"
     
-    # IMPLEMENTATION OF SUGGESTION #2: DYNAMIC WAIT (10s Timeout)
+    # RESTORED: Name-based logic
+    $buttonTexts = @("Get updates", "Check for updates", "Update all")
+    
+    # Start loop for wait
     $timeout = 10
     $startTime = Get-Date
     $storeWindow = $null
@@ -361,12 +384,9 @@ function Invoke-MSStoreUpdateCheck {
         return
     }
     
-    # Small buffer after window is found to ensure elements load
     Start-Sleep -Seconds 2
     
-    $buttonTexts = @("Get updates", "Check for updates", "Update all")
     $buttonFound = $false
-    
     foreach ($buttonText in $buttonTexts) {
         $buttonCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $buttonText)
         $button = $storeWindow.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $buttonCondition)
@@ -387,7 +407,6 @@ function Invoke-MSStoreUpdateCheck {
         Write-Log -Message "Could not find update button in Store" -Level WARNING
     }
     
-    # Error catching block for the whole function
     trap {
         Write-LeftAligned "$FGRed$Char_RedCross UI Automation Error$Reset"
         Write-Log -Message "UI Automation Error in Store: $($_.Exception.Message)" -Level ERROR
@@ -412,7 +431,9 @@ function Invoke-WinUpdateCheck {
     Write-Log -Message "Attempting to open Windows Update settings" -Level INFO
     Start-Process "ms-settings:windowsupdate"
     
-    # IMPLEMENTATION OF SUGGESTION #2: DYNAMIC WAIT (10s Timeout)
+    # RESTORED: Name-based logic
+    $targetButtons = @("Check for updates", "Download & install all", "Install all", "Restart now")
+    
     $timeout = 10
     $startTime = Get-Date
     $settingsWindow = $null
@@ -431,12 +452,9 @@ function Invoke-WinUpdateCheck {
         return
     }
     
-    # Small buffer for internal elements
     Start-Sleep -Seconds 2
     
-    $targetButtons = @("Check for updates", "Download & install all", "Install all", "Restart now")
     $buttonFound = $false
-    
     foreach ($text in $targetButtons) {
         $buttonCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $text)
         $button = $settingsWindow.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $buttonCondition)
@@ -457,7 +475,6 @@ function Invoke-WinUpdateCheck {
             Write-Log -Message "Could not find update buttons in Settings" -Level WARNING
     }
     
-    # Error catching block
     trap {
         Write-LeftAligned "$FGRed$Char_RedCross UI Automation Error$Reset"
         Write-Log -Message "UI Automation Error in Settings: $($_.Exception.Message)" -Level ERROR
