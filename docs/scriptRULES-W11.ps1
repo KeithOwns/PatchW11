@@ -16,7 +16,7 @@
 
 .NOTES
     Author: PatchW11 Team
-    Version: 7.84 (DarkCyan Copyright, White Indented Separator, Default_String)
+    Version: 7.87 (Cyan Legend/Defaults Titles - Dashes Fixed)
     Repository: https://github.com/KeithOwns/PatchW11
 #>
 
@@ -145,7 +145,8 @@ function Show-VisualExamples {
     Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset" # Boundary on its own line
 
     # Script Output LEGEND Title (Center-aligned and revised)
-    $LegendTitle = "$Char_EnDash ${FGWhite}Script Output LEGEND$Reset $Char_EnDash"
+    # FIX: Applying FGCyan to the en dashes as requested by the user.
+    $LegendTitle = "${FGCyan}$Char_EnDash Script Output LEGEND $Char_EnDash$Reset"
     $LegendTitleLength = 24 # Calculated length: 1+1+20+1+1 = 24 (excluding color codes)
     $LegendTitlePadding = [Math]::Floor((60 - $LegendTitleLength) / 2)
     
@@ -231,9 +232,12 @@ function Show-VisualExamples {
     if ($ShowFormattingRules) {
         
         # Script Output DEFAULTS Title (Center-aligned)
-        $DefaultsTitle = "$Char_EnDash Script Output DEFAULTS $Char_EnDash"
-        $DefaultsTitleLength = 29 # Length without ANSI codes
-        $DefaultsTitlePadding = [Math]::Floor((60 - $DefaultsTitleLength) / 2)
+        # UPDATED: Changed default color to FGCyan
+        # FIX: Applying FGCyan to the en dashes as requested by the user.
+        $DefaultsTitle = "${FGCyan}$Char_EnDash Script Output DEFAULTS $Char_EnDash$Reset"
+        $DefaultsTitleLength = 29 # Length without ANSI codes (approximate visible length: 1+1+24+1+1 = 28 but reusing var for safe measure)
+        # Recalculating visible length: "– Script Output DEFAULTS –" = 26 chars
+        $DefaultsTitlePadding = [Math]::Floor((60 - 26) / 2)
         Write-Output (" " * $DefaultsTitlePadding + $DefaultsTitle)
         
         # Rules Text in DarkCyan - UPDATED BASED ON USER REQUEST
@@ -261,11 +265,12 @@ if ($ShowRules) {
     # Add DarkBlue Separator above Copyright
     Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
 
-    # Display Copyright Footer (Centered and DarkCyan) - CHANGE 1
+    # Display Copyright Footer (Centered and Cyan)
     $FooterText = "$Char_Copyright 2025, www.AIIT.support. All Rights Reserved."
     $FooterPadding = [Math]::Floor((60 - $FooterText.Length) / 2)
     Write-Output ""
-    Write-Host (" " * $FooterPadding + $FooterText) -ForegroundColor DarkCyan
+    # UPDATED: Changed to Cyan
+    Write-Host (" " * $FooterPadding + $FooterText) -ForegroundColor Cyan
     
 } else {
     # 1. Initial State (Rules Hidden)
@@ -286,11 +291,12 @@ if ($ShowRules) {
     # Add DarkBlue Separator above Copyright
     Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
 
-    # 3. Copyright (DarkCyan, Centered, below Prompt) - CHANGE 1
+    # 3. Copyright (Cyan, Centered, below Prompt)
     Write-Output ""
     $FooterText = "$Char_Copyright 2025, www.AIIT.support. All Rights Reserved."
     $FooterPadding = [Math]::Floor((60 - $FooterText.Length) / 2)
-    Write-Host (" " * $FooterPadding + $FooterText) -ForegroundColor DarkCyan
+    # UPDATED: Changed to Cyan
+    Write-Host (" " * $FooterPadding + $FooterText) -ForegroundColor Cyan
 
     # 4. Wait for key
     $key = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -303,7 +309,8 @@ if ($ShowRules) {
 
         # Redisplay Copyright (ALWAYS LAST)
         Write-Output ""
-        Write-Host (" " * $FooterPadding + $FooterText) -ForegroundColor DarkCyan
+        # UPDATED: Changed to Cyan
+        Write-Host (" " * $FooterPadding + $FooterText) -ForegroundColor Cyan
     }
 }
 
