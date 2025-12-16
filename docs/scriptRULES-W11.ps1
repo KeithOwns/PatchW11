@@ -16,7 +16,7 @@
 
 .NOTES
     Author: PatchW11 Team
-    Version: 7.87 (Cyan Legend/Defaults Titles - Dashes Fixed)
+    Version: 8.03 (Type column header removed from legend)
     Repository: https://github.com/KeithOwns/PatchW11
 #>
 
@@ -32,7 +32,7 @@ Clear-Host
 $Char_HeavyCheck  = [char]0x2705 # ✅ - Used for Green Success
 $Char_Warn        = [char]0x26A0 # ⚠ - Used for DarkYellow Warning
 $Char_BallotCheck = [char]0x2611 # ☑ - Used for DarkGreen Enabled
-$Char_XSquare     = [char]0x26DD # ⛝ - Used for DarkRed Disabled
+$Char_XSquare     = [char]0x26DD # ⛝ - Used for DarkRed Disabled (Legacy Icon)
 $Char_NoEntry     = [char]0x26D2 # ⛒ - Used for Magenta Error
 $Char_Keyboard    = [char]0x2328 # ⌨ - Used for Prompt
 $Char_Loop        = [char]::ConvertFromUtf32(0x1F504) # 🔄 - Used for Sub-Header
@@ -40,7 +40,7 @@ $Char_Copyright   = [char]0x00A9 # © - Used for Footer
 $Char_EmDash      = [char]0x2014 # — - Used for all boundaries (60 dashes)
 $Char_EnDash      = [char]0x2013 # – - Used for new White Body Title representation
 $Char_Hyphen      = [char]0x002D # - - Used for new DarkCyan and Gray Text representation
-$Char_RedCross    = [char]0x274E # ❎ - Used for Red Failure
+$Char_RedCross    = [char]0x274E # ❎ - Used for Red Failure (SCRIPT Failure) / DarkRed Visual
 $Char_Finger      = [char]0x261B # ☛ - Used for Yellow Keypress
 $Char_GreaterThan = [char]0x003E # > - Used for Blue Body Icon representation
 
@@ -69,6 +69,9 @@ $BGDarkMagenta= "$Esc[45m"  # Background Magenta (Used in new HexCode)
 $FGBlack      = "$Esc[30m"  # Foreground Black (For contrast on Yellow/Cyan BG)
 $BGYellow     = "$Esc[103m" # High Intensity Background Yellow
 $BGCyan       = "$Esc[46m"  # Background Cyan
+$BGDarkRed    = "$Esc[41m"  # NEW: Background Dark Red
+$BGDarkGreen  = "$Esc[42m"  # Background Dark Green (for System Enabled Text)
+$BGDarkCyan   = "$Esc[46m" # Background Dark Cyan (for Rule A.7 text)
 
     # Helper for formatted column output
 function Write-Row {
@@ -80,8 +83,9 @@ function Write-Row {
     $Width_TextColor   = 11
     $Width_ANSI        = 7  
     $Width_About       = 7
-    $Width_Type        = 9
     
+    # Removed $Width_Type (was 9)
+
     # Width 14 to fit "Default_String" (14 chars) exactly
     $Width_DefaultString = 14 
     
@@ -90,8 +94,8 @@ function Write-Row {
     
     $ANSIPadded   = $ANSI.PadRight($Width_ANSI)
     $AboutPadded  = $About.PadLeft($Width_About) # RIGHT ALIGNED
-    $TypePadded   = $Type.PadRight($Width_Type)
-
+    # Removed $TypePadded
+    
     # Calculate Centering for DefaultString
     # FIX: Strip ANSI codes before calculating length to ensure visual centering is correct
     $CleanDefaultString = $DefaultString -replace "$Esc\[[^m]*m", ""
@@ -100,9 +104,9 @@ function Write-Row {
     # Calculate left padding to center the string in a 14-char field
     $PadLeftVal = [Math]::Max(0, [Math]::Floor(($Width_DefaultString - $ContentLength) / 2))
     
-    # Assemble the output line (5 columns)
-    # Reduced leading indentation from 2 spaces to 1 space
-    $OutputLine = " ${ColorCode}${CNameUncoloredPadded}${Reset} $ANSIPadded$AboutPadded $TypePadded   "
+    # Assemble the output line (4 columns + spacing for DefaultString)
+    # The '   ' here is reduced from the original (9 characters of $TypePadded + 3 characters of space = 12 total spaces/padding, now 3)
+    $OutputLine = " ${ColorCode}${CNameUncoloredPadded}${Reset} $ANSIPadded$AboutPadded "
     
     # Append the DefaultString content (Centered)
     $OutputLine += (" " * $PadLeftVal) + "${ColorCode}$DefaultString${Reset}"
@@ -159,8 +163,8 @@ function Show-VisualExamples {
     $Header_TextColor = "Color".PadLeft(11)  # RIGHT ALIGNED
     $Header_ANSI      = "ANSI".PadRight(7)   # Renamed from ANSIFg
     $Header_About     = "About".PadLeft(7)   # RIGHT ALIGNED
-    $Header_Type      = "Type".PadRight(9)
-    
+    # REMOVED $Header_Type = "Type".PadRight(9)
+
     # Center DefaultString Header
     $DefaultStringText = "Default_String" # Changed from DefaultString
     $Width_DefaultString = 14
@@ -168,12 +172,13 @@ function Show-VisualExamples {
     $Header_DefaultString = (" " * $PadLeftHeader) + $DefaultStringText
     
     # 1 Space leading indentation (was 2)
-    Write-Output " ${FGGray}$Header_TextColor $Header_ANSI$Header_About $Header_Type   $Header_DefaultString$Reset"
+    # Adjusted spacing for removed 'Type' column (9 spaces removed from the original line)
+    Write-Output " ${FGGray}$Header_TextColor $Header_ANSI$Header_About $Header_DefaultString$Reset"
 
     # Table Separator (White, Indented, 56 chars) - CHANGE 2
     Write-Output "$FGWhite  $([string]$Char_EmDash * 56)  $Reset"
 
-    # --- ROW DATA ---
+    # --- ROW DATA (Rearranged) ---
     
     # Hex and CharDefault components
     $HexEmDash = "0x2014 "
@@ -183,43 +188,52 @@ function Show-VisualExamples {
     $BoundaryString = [string]$Char_EmDash * 15
 
     # 1. Cyan (Header Title)
-    $CyanDefaultString = "$Char_EmDash$Char_EmDash PatchW11 $Char_EmDash$Char_EmDash"
-    Write-Row "Cyan"       "\e[96m" "Hdr/Ftr" "Title"    $HexEmDash $CyanDefaultString $FGCyan
+    $CyanDefaultString = " $Char_EmDash$Char_EmDash [TITLE] $Char_EmDash$Char_EmDash"
+    Write-Row "Cyan"       "\e[96m" "SCRIPT" " " "0x2014 " $CyanDefaultString $FGCyan
     
     # 2. DarkBlue (Header Boundary)
-    Write-Row "DarkBlue"   "\e[34m" "Hdr/Ftr" "Boundary" $HexEmDash $BoundaryString $FGDarkBlue
+    $DarkBlueDefaultString = "$([string]$Char_EmDash * 15)"
+    Write-Row "DarkBlue"   "\e[34m" "SCRIPT" " " "0x2014 " $DarkBlueDefaultString $FGDarkBlue
 
     # 3. DarkCyan (Output Text)
-    Write-Row "DarkCyan"   "\e[36m" "Output" "Text"     "0x2D" $Char_Hyphen $FGDarkCyan
-
-    # 6. White (Body Title)
-    Write-Row "White"      "\e[97m" "Body"   "Title"    $HexEnDash $Char_EnDash $FGWhite
+    $DarkCyanDefaultString = "[Output] "
+    Write-Row "DarkCyan"   "\e[36m" "SCRIPT" " " "0x2D" $DarkCyanDefaultString $FGDarkCyan
     
-    # 7. Gray (Body Text)
-    Write-Row "Gray"       "\e[37m" "Body"   "Text"     "0x2D" $Char_Hyphen $FGGray
+    # 4. Green (SCRIPT Success) - MOVED UP
+    $GreenDefaultString = "$Char_HeavyCheck [Success]!"
+    Write-Row "Green"      "\e[92m" "SCRIPT" " " "0x2705" $GreenDefaultString $FGGreen
 
-    # 8. DarkGray (Body Boundary)
-    Write-Row "DarkGray"   "\e[90m" "Body"   "Boundary" $HexEmDash $BoundaryString $FGDarkGray
+    # 5. Red (SCRIPT Failure) - MOVED UP
+    $RedDefaultString = "$Char_RedCross [Failure]!"
+    Write-Row "Red"        "\e[91m" "SCRIPT" " " "0x274E" $RedDefaultString $FGRed
     
-    # 9. Green (SCRIPT Success)
-    Write-Row "Green"      "\e[92m" "SCRIPT" "Success"  "0x2705" $Char_HeavyCheck $FGGreen
+    # 6. Yellow (Input Keypress) - MOVED UP
+    $YellowDefaultString = "$Char_Finger ${FGBlack}${BGYellow}[Key]${Reset}"
+    Write-Row "Yellow"     "\e[93m" "SCRIPT" " " "0x261B" $YellowDefaultString $FGYellow
+    
+    # 7. White (Body Title) - MOVED DOWN
+    $WhiteDefaultString = " $Char_EnDash [Title] $Char_EnDash"
+    Write-Row "White"      "\e[97m" "System" " " $HexEnDash $WhiteDefaultString $FGWhite
+    
+    # 8. Gray (Body Text) - MOVED DOWN
+    $GrayDefaultString = " [Information]"
+    Write-Row "Gray"       "\e[37m" "System" " " "0x2D" $GrayDefaultString $FGGray
 
-    # 10. Red (SCRIPT Failure)
-    Write-Row "Red"        "\e[91m" "SCRIPT" "Failure"  "0x274E" $Char_RedCross $FGRed
+    # 9. DarkGray (Body Boundary) - MOVED DOWN
+    $DarkGrayDefaultString = "$([string]$Char_EmDash * 15)"
+    Write-Row "DarkGray"   "\e[90m" "System" " " "0x2014 " $DarkGrayDefaultString $FGDarkGray
+    
+    # 10. DarkGreen (System Enabled) - MOVED DOWN
+    $DarkGreenDefaultString = "$Char_BallotCheck [ENABLED]"
+    Write-Row "DarkGreen"  "\e[32m" "System" " " "0x2611 " $DarkGreenDefaultString $FGDarkGreen
 
-    # 13. DarkGreen (System Enabled)
-    Write-Row "DarkGreen"  "\e[32m" "System" "Enabled"  "0x2611 " $Char_BallotCheck $FGDarkGreen
+    # 11. DarkRed (System Disabled) - MOVED DOWN
+    $DarkRedDefaultString = "${FGBlack}${BGDarkRed}$Char_RedCross [DISABLED]${Reset}"
+    Write-Row "DarkRed"    "\e[31m" "System" " " "0x274E" $DarkRedDefaultString $FGDarkRed
 
-    # 14. DarkRed (System Disabled)
-    Write-Row "DarkRed"    "\e[31m" "System" "Disabled" "0x26DD" " $Char_XSquare " $FGDarkRed
-
-    # 15. DarkYellow (System Warning)
-    Write-Row "DarkYellow" "\e[33m" "System" "Warning"  "0x26A0 " $Char_Warn $FGDarkYellow
-
-    # 4. Yellow (Input Keypress) - MOVED TO BOTTOM
-    # Only the [Key] part has Black FG and Yellow BG. The finger remains Yellow FG.
-    $YellowDefaultString = "$Char_Finger ${FGBlack}${BGYellow}[Key]"
-    Write-Row "Yellow"     "\e[93m" "Input"  "Keypress" "0x261B" $YellowDefaultString $FGYellow
+    # 12. DarkYellow (System Warning) - MOVED DOWN
+    $DarkYellowDefaultString = "$Char_Warn  [WARNING]"
+    Write-Row "DarkYellow" "\e[33m" "System" " " "0x26A0 " $DarkYellowDefaultString $FGDarkYellow
 
     # ADDED EMPTY LINE BELOW YELLOW - CHANGE 3
     Write-Output ""
@@ -232,32 +246,40 @@ function Show-VisualExamples {
     if ($ShowFormattingRules) {
         
         # Script Output DEFAULTS Title (Center-aligned)
-        # UPDATED: Changed default color to FGCyan
         # FIX: Applying FGCyan to the en dashes as requested by the user.
         $DefaultsTitle = "${FGCyan}$Char_EnDash Script Output DEFAULTS $Char_EnDash$Reset"
-        $DefaultsTitleLength = 29 # Length without ANSI codes (approximate visible length: 1+1+24+1+1 = 28 but reusing var for safe measure)
-        # Recalculating visible length: "– Script Output DEFAULTS –" = 26 chars
-        $DefaultsTitlePadding = [Math]::Floor((60 - 26) / 2)
-        Write-Output (" " * $DefaultsTitlePadding + $DefaultsTitle)
+        $DefaultsTitleLength = 24 # Adjusted length for visual centering of the text part
+        $LegendTitlePadding = [Math]::Floor((60 - 26) / 2) # Use 26 (visible dash/text length)
+        Write-Output (" " * $LegendTitlePadding + $DefaultsTitle)
         
         # Rules Text in DarkCyan - UPDATED BASED ON USER REQUEST
         Write-Output ""
         Write-Output "  ${FGDarkCyan}A. Text Formatting:$Reset"
         Write-Output "     ${FGDarkCyan}1. Never split whole words over multiple lines.$Reset"
         Write-Output "     ${FGDarkCyan}2. Header/Footer Alignment: Center-align$Reset"
-        Write-Output "     ${FGDarkCyan}3. Body Alignment: Left-align$Reset"
-        Write-Output "     ${FGDarkCyan}4. Body Indentation: $Reset"
+        # NEW RULE A.3 INSERTED
+        Write-Output "     ${FGDarkCyan}3. Request for user input: Center-align$Reset"
+        # Renumbered subsequent rules
+        Write-Output "     ${FGDarkCyan}4. Body Alignment: Left-align$Reset"
+        Write-Output "     ${FGDarkCyan}5. Body Indentation: $Reset"
         Write-Output "         ${FGDarkCyan}a. Icon: 1 space$Reset"
         Write-Output "         ${FGDarkCyan}b. Text: 2 spaces$Reset"
-        Write-Output "     ${FGDarkCyan}5. Boundaries composed of (`"$Char_EmDash`" * 60)$Reset"
-        Write-Output "     ${FGDarkCyan}6. Optimize output for window 60 characters in length$Reset"
+        Write-Output "     ${FGDarkCyan}6. Boundaries composed of (`"$Char_EmDash`" * 60)$Reset"
+        Write-Output "     ${FGDarkCyan}7. Optimize output for window 60 characters in length$Reset"
+        # Rules A.7 and A.8 renumbered to A.8 and A.9 respectively.
+        # FIX: Correcting Fg/Bg of the parenthesis in Rule A.8
+        Write-Output "     ${FGDarkCyan}8. Structured Status Display (Write-FlexLine): Use a $Reset"
+        Write-Output "         ${FGDarkCyan}background color (e.g., $BGDarkGreen)${Reset}${FGDarkCyan} for ${FGBlack}${BGDarkCyan} Active/On ${Reset}${FGDarkCyan} $Reset"
+        Write-Output "         ${FGDarkCyan}states on right-aligned status text.$Reset"
+        Write-Output "     ${FGDarkCyan}9. Always use ${FGGray}\$FGGray${FGDarkCyan} for informational text that is $Reset"
+        Write-Output "         ${FGDarkCyan}not a status or title.$Reset"
         
     }
 }
 
-# ============================================================================
+#============================================================================
 # MAIN EXECUTION
-# ============================================================================
+#============================================================================
 if ($ShowRules) {
     # If -ShowRules is used, display the full content immediately
     Show-VisualExamples -ShowFormattingRules $true
@@ -277,9 +299,8 @@ if ($ShowRules) {
     Show-VisualExamples -ShowFormattingRules $false
 
     # 2. Prompt (DarkCyan with Yellow highlights, Centered)
-    # Updated PromptStr to use Black Text on Yellow Background for the keys
-    Write-Output ""
-    $PromptStr = "${FGDarkCyan}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}Enter${Reset}${FGDarkCyan} to Show rules  |  Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}Spacebar${Reset}${FGDarkCyan} to Close$Reset"
+    # FIX: Changing 'Press' from $FGYellow to $FGDarkCyan
+    $PromptStr = "${FGDarkCyan}$Char_Keyboard  Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}Enter${Reset}${FGDarkCyan} to Show rules  |  Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}Spacebar${Reset}${FGDarkCyan} to Close$Reset"
 
     # Calculate centering padding
     # Calculate visible length of text without ANSI codes for centering
