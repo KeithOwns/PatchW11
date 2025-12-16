@@ -221,11 +221,18 @@ function Show-WUStatus {
     }
     
     Write-Host ""
-    # "Change only the "🔄" ... to DarkGreen/Red"
-    Write-LeftAligned "$iconColor$status_Icon $status_Color$status_WindowsUpdate$Reset"
     
-    # "Last checked:" should always print in Fg Gray
-    Write-LeftAligned "$FGGray Last checked: $timestampColor$LastSearchStr$Reset"
+    # --- CHANGED: Updates Available Logic ---
+    if ($status_WindowsUpdate -eq "Updates available") {
+        # Updates found: Print in DarkYellow and HIDE 'Last checked'
+        Write-LeftAligned "$FGDarkYellow$Char_Warn $FGDarkYellow$status_WindowsUpdate$Reset"
+    }
+    else {
+        # Updates NOT found (or check failed): Use standard logic + 'Last checked'
+        Write-LeftAligned "$iconColor$status_Icon $status_Color$status_WindowsUpdate$Reset"
+        Write-LeftAligned "$FGGray Last checked: $timestampColor$LastSearchStr$Reset"
+    }
+    # ----------------------------------------
     
     Write-Log -Message "Starting Windows Update status check" -Level INFO
 
