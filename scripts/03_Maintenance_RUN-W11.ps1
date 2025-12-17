@@ -13,6 +13,19 @@ Clear-Host
   Performs comprehensive system optimization, diagnostics, and maintenance tasks.
   
   MATCHED FORMATTING TO scriptRULES-W11.ps1 standards.
+  UPDATED: Helper functions unified.
+  UPDATED: Logging standardized.
+  UPDATED: Header Icon placement.
+  UPDATED: Visual styles (High contrast keys, Disabled backgrounds, EnDashes).
+  UPDATED: Fixed System Restore logic and removed CPU Turbo Boost limiter.
+  UPDATED: Header layout and Main Menu Prompt colors (DarkGray Background for Spacebar).
+  UPDATED: Menu colors and layout (Centered Title, Yellow "SELECT", Adjusted Spacing).
+  UPDATED: "Run ALL Tasks" formatting (Yellow "ALL").
+  UPDATED: Restore Point prompt styling to match Main Menu.
+  UPDATED: Reordered "Run ALL Tasks" logic for expert efficiency (Cleanup -> Power -> Visuals -> Disk).
+  UPDATED: Fixed spacing in Main Menu Title (added spaces inside dashes).
+  UPDATED: Main Menu Prompt text and logic ("any other key to EXIT").
+  UPDATED: Reverted Title to "RUN", DarkBlue Boundary, Added Space to Exit Prompt.
 #>
 
 # --- Preamble: Formatting Rules & Encoding ---
@@ -25,74 +38,88 @@ $Bold = "$Esc[1m"
 $FGCyan       = "$Esc[96m"
 $FGDarkCyan   = "$Esc[36m"
 $FGDarkBlue   = "$Esc[34m"
-$FGBlue       = "$Esc[94m"  # Added for Header Icon
+$FGBlue       = "$Esc[94m"
 $FGWhite      = "$Esc[97m"
 $FGGray       = "$Esc[37m"
 $FGDarkGray   = "$Esc[90m"
 $FGDarkGreen  = "$Esc[32m"
+$FGGreen      = "$Esc[92m"
 $FGDarkRed    = "$Esc[31m"
+$FGRed        = "$Esc[91m"
 $FGDarkYellow = "$Esc[33m"
 $FGYellow     = "$Esc[93m"
 $FGDarkMagenta= "$Esc[35m"
+$FGBlack      = "$Esc[30m"
+
+# Background Colors (Added for Compliance)
+$BGDarkRed    = "$Esc[41m"
+$BGYellow     = "$Esc[103m"
+$BGDarkCyan   = "$Esc[46m"
+$BGDarkGray   = "$Esc[100m"
+$BGGray       = "$Esc[47m" # Added for EXIT prompt
 
 # Icons
-$Char_EmDash      = [char]0x2014
+$Char_EmDash      = [char]0x2014 # —
+$Char_EnDash      = [char]0x2013 # – (Added for Body Titles)
 $Char_BallotCheck = [char]0x2611 # ☑
+$Char_Check       = [char]0x2713
+$Char_Cross       = [char]0x2718
 $Char_XSquare     = [char]0x274E # ❎
 $Char_Warn        = [char]0x26A0 # ⚠
-$Char_Finger      = [char]0x261B # ☛
+$Char_Info        = [char]0x2139
+$Char_Bell        = [char]::ConvertFromUtf32(0x1F514)
+$Char_Gear        = [char]0x2699
+$Char_Loop        = [char]::ConvertFromUtf32(0x1F504) # 🔄
+$Char_Shield      = [char]::ConvertFromUtf32(0x1F6E1) # 🛡️
+$Char_Person      = [char]::ConvertFromUtf32(0x1F464) # 👤
+$Char_Satellite   = [char]::ConvertFromUtf32(0x1F4E1) # 📡
+$Char_CardIndex   = [char]::ConvertFromUtf32(0x1F5C2) # 🗂️
+$Char_Desktop     = [char]::ConvertFromUtf32(0x1F5A5) # 🖥️
 $Char_Keyboard    = [char]0x2328 # ⌨
-$Char_Loop        = [char]::ConvertFromUtf32(0x1F504)
-$Char_Copyright   = [char]0x00A9
+$Char_Finger      = [char]0x261B # ☛
 $Char_NoEntry     = [char]::ConvertFromUtf32(0x26D4) # 🚫
+$Char_WhiteCheck  = [char]0x2705 # ✅
+$Char_CrossMark   = [char]::ConvertFromUtf32(0x274C) # ❌
+$Char_Copyright   = [char]0x00A9
+$Char_Eject       = [char]0x23CF # ⏏
 
 # Global Variables
 $script:LogPath = "C:\Windows\Temp\Maint_$(Get-Date -Format 'yyMMdd').log"
 $script:RestartRequired = $false
 $script:ErrorsFound = @()
 
-# --- Formatting Helpers ---
+# --- Unified Helper Functions ---
 
 function Write-Centered {
-    param(
-        [string]$Text,
-        [int]$Width = 60
-    )
+    param([string]$Text, [int]$Width = 60)
     $cleanText = $Text -replace "$Esc\[[0-9;]*m", ""
     $padLeft = [Math]::Floor(($Width - $cleanText.Length) / 2)
     if ($padLeft -lt 0) { $padLeft = 0 }
-    
     Write-Host (" " * $padLeft + $Text)
 }
 
 function Write-LeftAligned {
-    param(
-        [string]$Text,
-        [int]$Indent = 2
-    )
+    param([string]$Text, [int]$Indent = 2)
     Write-Host (" " * $Indent + $Text)
 }
 
 function Write-Header {
     param([string]$Title)
-    $Width = 60
-    $Pad = [Math]::Max(0, [Math]::Floor(($Width - $Title.Length) / 2))
-    $Line = "$FGDarkBlue$([string]$Char_EmDash * $Width)$Reset"
+    # Line 1: Top Title "— Patch-W11 —" (Cyan, Centered)
+    $TopTitle = "$Char_EmDash Patch-W11 $Char_EmDash"
+    Write-Centered "$Bold$FGCyan$TopTitle$Reset"
     
-    # Print Top Line, Centered Title, Sub-Header
-    Write-Host $Line
-    Write-Host (" " * $Pad + "$Bold$FGCyan$Title$Reset")
+    # Line 2: The Variable Title (DarkCyan, Centered)
+    Write-Centered "$Bold$FGDarkCyan$Title$Reset"
     
-    $SubText = "Patch-W11 "
-    $SubIcon = "$Char_Loop"
-    $SubPad = [Math]::Max(0, [Math]::Floor(($Width - ($SubText.Length + 1)) / 2)) # Approx width fix for icon
-    Write-Host (" " * $SubPad + "$Bold$FGDarkCyan$SubText$FGBlue$SubIcon$Reset")
-    Write-Host $Line
+    # Line 3: Boundary (DarkBlue)
+    Write-Boundary $FGDarkBlue
 }
 
 function Write-BodyTitle {
     param([string]$Title)
-    Write-LeftAligned "$Bold$FGWhite$Char_EmDash$Char_EmDash $Title $Char_EmDash$Char_EmDash$Reset"
+    # UPDATED: Use EnDash and specific spacing (Rule 7/8 equivalent in Visuals)
+    Write-LeftAligned "$Bold$FGWhite $Char_EnDash $Title $Char_EnDash$Reset"
 }
 
 function Write-Boundary {
@@ -101,18 +128,18 @@ function Write-Boundary {
 }
 
 function Get-StatusLine {
-    param(
-        [bool]$IsEnabled,
-        [string]$Text
-    )
-    if ($IsEnabled) {
-        return "$FGDarkGreen$Char_BallotCheck  $FGDarkCyan$Text$Reset"
-    } else {
-        return "$FGDarkRed$Char_XSquare $FGDarkCyan$Text$Reset"
+    param([bool]$IsEnabled, [string]$Text)
+    if ($IsEnabled) { 
+        # UPDATED: Full DarkGreen line for Enabled/Success (Matches Visual Rules Row 10)
+        return "$FGDarkGreen$Char_BallotCheck $Text$Reset" 
+    }
+    else { 
+        # UPDATED: Black on DarkRed BG for Disabled (Matches Visual Rules Row 11)
+        return "${FGBlack}${BGDarkRed}$Char_XSquare $Text$Reset" 
     }
 }
 
-# --- Utility Functions ---
+# --- Logging & Registry Functions (Standardized) ---
 
 function Write-Log {
     param(
@@ -146,10 +173,9 @@ function Set-RegistryDword {
         }
         New-ItemProperty -Path $Path -Name $Name -PropertyType DWord -Value $Value -Force | Out-Null
         Write-Log -Message "Set registry: $Path\$Name = $Value" -Level SUCCESS
-        return $true
     } catch {
         Write-Log -Message "Failed to set registry: $Path\$Name - $($_.Exception.Message)" -Level ERROR
-        return $false
+        throw $_ 
     }
 }
 
@@ -192,12 +218,13 @@ function Optimize-Disks {
                     Write-Log -Message "Defragmentation completed for drive $drive" -Level SUCCESS
                 }
             } catch {
-                Write-LeftAligned "$FGDarkRed$Char_XSquare Failed to optimize drive: $($_.Exception.Message)$Reset"
+                # UPDATED: Use FGRed for Script/Action Failure
+                Write-LeftAligned "$FGRed$Char_XSquare Failed to optimize drive: $($_.Exception.Message)$Reset"
                 Write-Log -Message "Failed to optimize drive $drive`: $($_.Exception.Message)" -Level ERROR
             }
         }
     } catch {
-        Write-LeftAligned "$FGDarkRed$Char_XSquare Disk optimization error$Reset"
+        Write-LeftAligned "$FGRed$Char_XSquare Disk optimization error$Reset"
         Write-Log -Message "Disk optimization error: $($_.Exception.Message)" -Level ERROR
     }
     Write-Boundary $FGDarkGray
@@ -216,14 +243,13 @@ function Set-PowerSettings {
         Write-LeftAligned (Get-StatusLine $true "Power plan set to High Performance")
         Write-Log -Message "Power plan set to High Performance" -Level SUCCESS
 
-        Write-LeftAligned "$FGYellow Setting Best Performance mode...$Reset"
-        $powerSettingsPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7"
-        Set-RegistryDword -Path $powerSettingsPath -Name "ACSettingIndex" -Value 0
-        Set-RegistryDword -Path $powerSettingsPath -Name "DCSettingIndex" -Value 0
-        Write-LeftAligned (Get-StatusLine $true "Power mode configured")
+        # REMOVED: Registry edit for Processor Performance Boost Mode (0).
+        # Setting "Processor performance boost mode" to 0 (Disabled) effectively disables Turbo Boost,
+        # capping the CPU at base clock. This contradicts "High Performance".
+        # We rely on the High Performance Power Plan activated above to manage boost states correctly.
 
     } catch {
-        Write-LeftAligned "$FGDarkRed$Char_XSquare Error: $($_.Exception.Message)$Reset"
+        Write-LeftAligned "$FGRed$Char_XSquare Error: $($_.Exception.Message)$Reset"
         Write-Log -Message "Power settings error: $($_.Exception.Message)" -Level ERROR
     }
     Write-Boundary $FGDarkGray
@@ -259,7 +285,7 @@ function Optimize-VisualEffects {
         Write-Log -Message "Visual effects optimized" -Level SUCCESS
 
     } catch {
-        Write-LeftAligned "$FGDarkRed$Char_XSquare Error: $($_.Exception.Message)$Reset"
+        Write-LeftAligned "$FGRed$Char_XSquare Error: $($_.Exception.Message)$Reset"
         Write-Log -Message "Visual effects error: $($_.Exception.Message)" -Level ERROR
     }
     Write-Boundary $FGDarkGray
@@ -291,7 +317,8 @@ function Optimize-SystemCleanup {
                     Write-LeftAligned "$FGGray  Folder is already empty$Reset"
                 }
             } catch {
-                Write-LeftAligned "$FGDarkRed$Char_XSquare Partial cleanup failure$Reset"
+                # UPDATED: Use FGRed for Script Failure
+                Write-LeftAligned "$FGRed$Char_XSquare Partial cleanup failure$Reset"
             }
         }
     }
@@ -299,16 +326,40 @@ function Optimize-SystemCleanup {
     Write-Boundary $FGDarkGray
 }
 
+# --- 5. Create System Restore Point (New Function) ---
+
+function Create-RestorePoint {
+    Write-Host ""
+    Write-Header "SYSTEM RESTORE POINT"
+
+    # REMOVED: The check "if (-not (Get-ComputerRestorePoint...))".
+    # This command lists *existing* restore points. If the system has Restore ENABLED but 0 points,
+    # the original check would fail and claim it was disabled.
+    # We now let Checkpoint-Computer run; if disabled, the Catch block will handle it.
+
+    try {
+        $pointName = "Maintenance Script $(Get-Date -Format 'yyyyMMdd_HHmmss')"
+        Write-LeftAligned "$FGYellow Creating restore point: $pointName...$Reset"
+        
+        Checkpoint-Computer -Description $pointName -RestorePointType "MODIFY_SETTINGS" -ErrorAction Stop
+        
+        Write-LeftAligned (Get-StatusLine $true "Restore Point created successfully")
+        Write-Log -Message "Restore Point '$pointName' created successfully" -Level SUCCESS
+
+    } catch {
+        # This catch block will handle cases where System Restore is actually disabled
+        Write-LeftAligned "${FGBlack}${BGDarkRed}$Char_XSquare Failed to create Restore Point: $($_.Exception.Message)$Reset"
+        Write-Log -Message "Failed to create Restore Point: $($_.Exception.Message)" -Level ERROR
+    }
+    Write-Boundary $FGDarkGray
+}
+
 # --- Main Execution ---
 
 try {
-    # --- Determine Copyright Year ---
+    # Script 03 Footer Logic
     $ScriptPath = $PSCommandPath
-    if ($ScriptPath) {
-        $LastEditYear = (Get-Item $ScriptPath).LastWriteTime.Year
-    } else {
-        $LastEditYear = (Get-Date).Year
-    }
+    if ($ScriptPath) { $LastEditYear = (Get-Item $ScriptPath).LastWriteTime.Year } else { $LastEditYear = (Get-Date).Year }
     $CopyrightLine = "© $LastEditYear, www.AIIT.support. All Rights Reserved."
 
     $showMenu = $true
@@ -317,52 +368,90 @@ try {
         Clear-Host
         Write-Host "`n" -NoNewline
         
-        # Standard Header
+        # Standard Header (Updated Style)
         Write-Header "MAINTENANCE & OPTIMIZATION"
         
+        # REMOVED: Empty line above body title
+        
+        # Updated Body Title: Centered, Cyan, with Yellow "RUN"
+        # Reverted "SELECT" to "RUN" and adjusted spacing: "–  RUN"
+        $BodyTitle = "$Bold$FGCyan$Char_EnDash  ${FGYellow}RUN${FGCyan} Maintenance & Optimization Tasks $Char_EnDash$Reset"
+        Write-Centered $BodyTitle
+        
+        # ADDED: Empty line below body title
         Write-Host ""
-        Write-BodyTitle "AVAILABLE MAINTENANCE TASKS"
         
         # Menu Options (Rule 4: 2-space Indent)
-        Write-LeftAligned " ${FGYellow}[1]${Reset} Disk Optimization"
-        Write-LeftAligned " ${FGYellow}[2]${Reset} Power Settings"
-        Write-LeftAligned " ${FGYellow}[3]${Reset} Visual Effects"
-        Write-LeftAligned " ${FGYellow}[4]${Reset} System Cleanup"
+        # UPDATED: Use Black on Yellow for Input Keys
+        # UPDATED: Use DarkCyan for Item Text
+        Write-LeftAligned " ${FGBlack}${BGYellow}[1]${Reset} ${FGDarkCyan}Disk Optimization${Reset}"
+        Write-LeftAligned " ${FGBlack}${BGYellow}[2]${Reset} ${FGDarkCyan}Power Settings${Reset}"
+        Write-LeftAligned " ${FGBlack}${BGYellow}[3]${Reset} ${FGDarkCyan}Visual Effects${Reset}"
+        Write-LeftAligned " ${FGBlack}${BGYellow}[4]${Reset} ${FGDarkCyan}System Cleanup${Reset}"
         Write-Host ""
-        Write-LeftAligned " ${FGYellow}[A]${Reset} Run All Tasks"
         
+        # UPDATED: "All" -> "ALL" (Yellow)
+        Write-LeftAligned " ${FGBlack}${BGYellow}[A]${Reset} ${FGDarkCyan}Run ${FGYellow}ALL${FGDarkCyan} Tasks${Reset}"
+        
+        # UPDATED: Use DarkBlue for boundary below the tasks
         Write-Boundary $FGDarkBlue
         
-        # Prompt
-        $prompt = "${FGDarkCyan}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger Key${FGDarkCyan} to Select  |  Press ${FGYellow}$Char_Finger Spacebar${FGDarkCyan} to Exit$Reset"
+        # Prompt (Completely Redesigned per Request)
+        # ⌨ Press ☛ ['Key'] to RUN or any other key to EXIT⏏ 
+        # UPDATED: Colors matched to request. Added space after Eject icon inside BG.
+        $prompt = "${FGWhite}$Char_Keyboard  ${FGDarkCyan}Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}['Key']${Reset}${FGDarkCyan} to ${FGYellow}RUN${FGDarkCyan} or any other ${FGGray}key${FGDarkCyan} to ${FGRed}${BGGray}EXIT$Char_Eject ${Reset}"
         Write-Centered $prompt
         
         $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         
-        if ($key.Character -eq ' ') {
-            $showMenu = $false
-            Write-Host ""
-            Write-LeftAligned "$FGGray Exiting...$Reset"
-        } else {
-            # Execute Selection
-            switch ($key.Character.ToString().ToUpper()) {
-                '1' { Optimize-Disks }
-                '2' { Set-PowerSettings }
-                '3' { Optimize-VisualEffects }
-                '4' { Optimize-SystemCleanup }
-                'A' { 
-                    Optimize-Disks
-                    Set-PowerSettings
-                    Optimize-VisualEffects
-                    Optimize-SystemCleanup
-                }
-                Default { continue } # Skip to top if invalid
+        $taskCompleted = $false
+        
+        # Execute Selection or Exit
+        switch ($key.Character.ToString().ToUpper()) {
+            '1' { Optimize-Disks; $taskCompleted = $true }
+            '2' { Set-PowerSettings; $taskCompleted = $true }
+            '3' { Optimize-VisualEffects; $taskCompleted = $true }
+            '4' { Optimize-SystemCleanup; $taskCompleted = $true }
+            'A' { 
+                # UPDATED ORDER: Clean > Power > Visuals > Disk
+                Optimize-SystemCleanup
+                Set-PowerSettings
+                Optimize-VisualEffects
+                Optimize-Disks
+                $taskCompleted = $true
             }
-            
-            # Pause to allow user to read output
+            Default { 
+                # "Any other key to EXIT"
+                $showMenu = $false
+                Write-Host ""
+                Write-LeftAligned "$FGGray Exiting...$Reset"
+            }
+        }
+
+
+        # Check for completed tasks and show new prompt
+        if ($taskCompleted) {
             Write-Host ""
-            Write-Centered "$FGGray Press any key to return to menu...$Reset"
-            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+            Write-Boundary $FGDarkBlue
+            
+            # New Prompt: Restore Point or Exit
+            # UPDATED: Styled to match Main Menu Prompt
+            $restorePrompt = "${FGWhite}$Char_Keyboard  ${FGDarkCyan}Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}[Enter]${Reset}${FGDarkCyan} to ${FGYellow}Create Restore Point${FGDarkCyan}  ${FGWhite}|${FGDarkCyan}  Press ${FGDarkGray}$Char_Finger ${FGBlack}${BGDarkGray}[Spacebar]${Reset}${FGDarkCyan} to ${FGDarkGray}Exit${Reset}"
+            Write-Centered $restorePrompt
+            
+            $key2 = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+            
+            if ($key2.Character -eq [char]0x0D) { # Enter key is ASCII 0x0D
+                Create-RestorePoint
+                # Wait after creating restore point before returning to main menu
+                Write-Host ""
+                Write-Centered "$FGGray Press any key to return to menu...$Reset"
+                $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+            } elseif ($key2.Character -eq ' ') {
+                $showMenu = $false
+                Write-Host ""
+                Write-LeftAligned "$FGGray Exiting...$Reset"
+            }
         }
     }
     
@@ -371,13 +460,15 @@ try {
     Write-Host "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
     $padCopyright = [math]::Max(0, [math]::Floor((60 - $CopyrightLine.Length) / 2))
     Write-Host (" " * $padCopyright) -NoNewline
-    Write-Host "$FGDarkCyan$CopyrightLine$Reset"
+    # UPDATED: Changed to FGCyan (Cyan) instead of DarkCyan
+    Write-Host "$FGCyan$CopyrightLine$Reset"
     
     # Final 5 Empty Lines
     1..5 | ForEach-Object { Write-Host "" }
     
 } catch {
-    Write-Host "`n$FGDarkRed$Char_XSquare Critical Script Error: $($_.Exception.Message)$Reset"
+    # UPDATED: Use FGRed for Critical Failure
+    Write-Host "`n$FGRed$Char_XSquare Critical Script Error: $($_.Exception.Message)$Reset"
     Write-Log -Message "Critical Script Error: $($_.Exception.Message)" -Level ERROR
     exit 1
 }
