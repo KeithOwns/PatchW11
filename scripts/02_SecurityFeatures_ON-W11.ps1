@@ -42,8 +42,10 @@ $ErrorActionPreference = 'Continue'
 $Char_EmDash      = [char]0x2014 # —
 $Char_EnDash      = [char]0x2013 # –
 $Char_BallotCheck = [char]0x2611 # ☑ - Used for DarkGreen Enabled
-$Char_XSquare     = [char]0x26DD # ⛝ - Used for DarkRed Disabled (Matched scriptRULES)
+# EDITED: Changed from 0x26DD (⛝) to 0x274E (❎) per request "Change all ⛝ to ❎"
+$Char_XSquare     = [char]0x274E # ❎ - Used for DarkRed Disabled
 $Char_Warn        = [char]0x26A0 # ⚠ - Used for DarkYellow Warning
+$Char_Radioactive = [char]0x2622 # ☢ - Used for Critical Warnings
 $Char_HeavyCheck  = [char]0x2705 # ✅ - Used for Green Success
 $Char_RedCross    = [char]0x274E # ❎ - Used for Red Failure
 $Char_Keyboard    = [char]0x2328 # ⌨ - Used for Prompt
@@ -75,6 +77,8 @@ $FGRed        = "$Esc[91m"  # SCRIPT Failure
 $FGYellow     = "$Esc[93m"  # Input Keypress
 $FGBlack      = "$Esc[30m"
 $BGYellow     = "$Esc[103m"
+# EDITED: Added BGDarkGray for prompt styling
+$BGDarkGray   = "$Esc[100m"
 
 # Global Logging Variables
 $script:LogPath = "C:\Windows\Temp\Security_$(Get-Date -Format 'yyMMdd').log"
@@ -170,6 +174,22 @@ function Set-RegistryDword {
     }
 }
 
+# NEW: Set-RegistryString to handle text-based registry values (like SmartScreen)
+function Set-RegistryString {
+    param([Parameter(Mandatory)] [string]$Path, [Parameter(Mandatory)] [string]$Name, [Parameter(Mandatory)] [string]$Value)
+    try {
+        if (-not (Test-Path $Path)) {
+            New-Item -Path $Path -Force | Out-Null
+            Write-Log -Message "Created registry path: $Path" -Level INFO
+        }
+        New-ItemProperty -Path $Path -Name $Name -PropertyType String -Value $Value -Force | Out-Null
+        Write-Log -Message "Set registry string: $Path\$Name = $Value" -Level SUCCESS
+    } catch {
+        Write-Log -Message "Failed to set registry: $Path\$Name - $($_.Exception.Message)" -Level ERROR
+        throw $_
+    }
+}
+
 # --- Script 02 Specific Helpers ---
 
 # Global variables
@@ -178,6 +198,7 @@ $script:RealTimeProtectionEnabled = $true
 $script:ThirdPartyAVActive = $false
 $script:ScanStatusAllGreen = $false
 $script:ActiveThreatCount = 0
+$script:FullScanNeeded = $false
 
 class SecurityCheck {
     [string]$Category
@@ -222,7 +243,8 @@ function Write-SectionHeader {
         Write-Host ""
     } else {
         # Standard empty line for spacing between boundary and title
-        Write-Host ""
+        # EDITED: Removed this empty line to compact sections per request
+        # Write-Host "" 
     }
     
     # 4. Icon + Title (White)
@@ -252,7 +274,8 @@ function Get-ThirdPartyAntivirus {
 function Get-DefenderStatus {
     # IconColor defaulting to White in function, removed explicit Blue
     # Added -IsFirstSection switch to trigger "Windows Security" header text
-    Write-SectionHeader "Virus & threat protection" -Icon "🛡" -Gap 2 -IsFirstSection
+    # EDITED: Added -NoBoundary to suppress default boundary in favor of the new global header structure
+    Write-SectionHeader "Virus & threat protection" -Icon "🛡" -Gap 2 -IsFirstSection -NoBoundary
 
     $avInfo = Get-ThirdPartyAntivirus
     if ($avInfo.IsThirdParty) {
@@ -295,10 +318,17 @@ function Get-DefenderStatus {
     try {
         $tamperProtection = Get-ItemPropertyValue -Path "HKLM:\SOFTWARE\Microsoft\Windows Defender\Features" -Name "TamperProtection" -ErrorAction Stop
         $enabled = ($tamperProtection -eq 1 -or $tamperProtection -eq 5)
-        Write-LeftAligned (Get-StatusLine $enabled "Tamper protection") -Indent 3
+        
+        # EDITED: Uses new XSquare (❎) automatically via global variable change
+        if ($enabled) {
+            Write-LeftAligned (Get-StatusLine $enabled "Tamper protection") -Indent 3
+        } else {
+            # EDITED: Changed FG color to FGDarkRed for both the icon AND the text as requested
+            Write-LeftAligned "$FGDarkRed$Char_XSquare $FGDarkRed Tamper protection$Reset" -Indent 3
+        }
         Add-SecurityCheck -Category "Virus & Threat Protection" -Name "Tamper protection" -IsEnabled $enabled -Severity "Critical" -Remediation "Enable via Windows Security UI"
     } catch {
-        Write-LeftAligned (Get-StatusLine $false "Tamper protection (Unknown)") -Indent 3
+        Write-LeftAligned "$FGDarkRed$Char_XSquare $FGGray Tamper protection (Unknown)$Reset" -Indent 3
         Add-SecurityCheck -Category "Virus & Threat Protection" -Name "Tamper protection" -IsEnabled $false -Severity "Critical"
     }
 
@@ -352,11 +382,13 @@ function Get-FirewallStatus {
             $isUnsecured = ($authMethod -match "Open|None|Unsecured" -and $authMethod -notmatch "WPA2-Open")
             
             if ($isUnsecured) {
+                # EDITED: Uses XSquare (now ❎)
                 Write-LeftAligned "$FGDarkRed$Char_XSquare $FGDarkCyan Wi-Fi Security (UNSECURED: $authMethod)$Reset" -Indent 3
                 Add-SecurityCheck -Category "Network" -Name "Wi-Fi Security" -IsEnabled $false -Severity "Warning" -Remediation "Connect to secured network"
                 Write-Log -Message "Unsecured Wi-Fi detected: $authMethod" -Level WARNING
             } else {
-                Write-LeftAligned "$FGDarkGreen$Char_BallotCheck  $FGDarkCyan Wi-Fi Security ($authMethod)$Reset" -Indent 3
+                # EDITED: Removed one space after BallotCheck and changed FGDarkCyan to FGGray
+                Write-LeftAligned "$FGDarkGreen$Char_BallotCheck $FGGray Wi-Fi Security ($authMethod)$Reset" -Indent 3
                 Add-SecurityCheck -Category "Network" -Name "Wi-Fi Security" -IsEnabled $true -Severity "Info"
             }
         }
@@ -447,6 +479,11 @@ function Get-ScanInformation {
 
     $script:ScanStatusAllGreen = ($qsColor -eq $FGDarkGreen) -and ($fsColor -eq $FGDarkGreen) -and ($updColor -eq $FGDarkGreen) -and ($script:ActiveThreatCount -eq 0)
 
+    # CHECK: If Full Scan is Red (outdated), set global flag
+    if ($fsColor -eq $FGRed) {
+        $script:FullScanNeeded = $true
+    }
+
     # --- Padding for Colon Alignment ---
     $LabelWidth = 17 # Max length of "Signature version"
     $Indent = 7
@@ -536,7 +573,8 @@ function Show-SecuritySummary {
         Write-Centered "$FGRed$Char_RedCross $disabled disabled security features found$Reset"
         Write-Boundary $FGDarkBlue
         if ($critical -gt 0) {
-            Write-Centered "$FGRed$Char_Warn $critical Critical features disabled$Reset"
+            # EDITED: Simplified Critical text format " ☢  X Critical"
+            Write-Centered "$FGRed$Char_Radioactive  $critical Critical$Reset"
         }
     }
     Write-Boundary $FGDarkBlue
@@ -552,8 +590,18 @@ function Enable-PUAProtection { try { Set-MpPreference -PUAProtection Enabled -E
 function Enable-MemoryIntegrity { try { Set-RegistryDword "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" "Enabled" 1; $true } catch { $false } }
 function Enable-LSAProtection { try { Set-RegistryDword "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" "RunAsPPL" 1; $true } catch { $false } }
 function Enable-Firewall { param($Profile) try { Set-NetFirewallProfile -Name $Profile -Enabled True -ErrorAction Stop; Write-Log "Enabled $Profile firewall" "SUCCESS"; $true } catch { Write-Log "Failed $Profile firewall" "ERROR"; $false } }
-function Enable-CheckAppsAndFiles { try { Set-RegistryDword "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" "SmartScreenEnabled" "Warn"; $true } catch { $false } } 
+# EDITED: Replaced Set-RegistryDword with Set-RegistryString and value "Warn" to fix functionality
+function Enable-CheckAppsAndFiles { try { Set-RegistryString "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" "SmartScreenEnabled" "Warn"; $true } catch { $false } } 
 function Enable-SmartScreenEdge { try { Set-RegistryDword "HKCU:\Software\Microsoft\Edge\SmartScreenEnabled" "(default)" 1; $true } catch { $false } }
+
+# NEW: Restart Windows Security App Function
+function Restart-SecHealthUI {
+    # UPDATED: FGCyan -> FGDarkCyan per user request
+    Write-LeftAligned "$FGDarkCyan Restarting Windows Security App...$Reset" -Indent 3
+    Write-Log "Restarting Windows Security App" "INFO"
+    Get-Process "SecHealthUI" -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Process "windowsdefender:"
+}
 
 function Apply-SecuritySettings {
     $disabledChecks = $script:SecurityChecks | Where-Object { !$_.IsEnabled }
@@ -582,25 +630,18 @@ function Apply-SecuritySettings {
     if ($applied -gt 0) { 
         Write-LeftAligned "$FGGreen$Char_HeavyCheck Enabled $applied features$Reset" -Indent 3
         Write-Log "Successfully enabled $applied features" "SUCCESS"
-        Get-Process "SecHealthUI" -ErrorAction SilentlyContinue | Stop-Process -Force
-        Start-Process "windowsdefender:"
+        Restart-SecHealthUI
     }
-}
-
-# NEW: Restart Windows Security App Function
-function Restart-SecHealthUI {
-    # UPDATED: FGCyan -> FGDarkCyan per user request
-    Write-LeftAligned "$FGDarkCyan Restarting Windows Security App...$Reset" -Indent 3
-    Write-Log "Restarting Windows Security App" "INFO"
-    Get-Process "SecHealthUI" -ErrorAction SilentlyContinue | Stop-Process -Force
-    Start-Process "windowsdefender:"
 }
 
 function Invoke-ApplySecuritySettings {
     if (($script:SecurityChecks | Where-Object { !$_.IsEnabled }).Count -eq 0) { return }
     
     Write-Host ""
-    Write-Centered "$FGDarkCyan$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}Enter${Reset}${FGDarkCyan} to Apply Settings  |  Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}Spacebar${Reset}${FGDarkCyan} to Exit$Reset"
+    # EDITED: "  ⌨  Press ☛ [Enter] to SET | Press ☛ ['Any Other'] to skip"
+    # COLORS: SET (Yellow), skip (DarkGray), ['Any Other'] (BG DarkGray)
+    # LOGIC: Enter to SET, Any Other to Skip
+    Write-Centered "$FGDarkCyan  $Char_Keyboard  Press ${FGBlack}${BGYellow}$Char_Finger [Enter]${Reset}${FGDarkCyan} to ${FGYellow}SET${Reset}${FGDarkCyan} | Press $Char_Finger ${BGDarkGray}['Any Other']${Reset}${FGDarkCyan} to ${FGDarkGray}skip${Reset}"
     
     $valid = $false
     while (!$valid) {
@@ -608,12 +649,16 @@ function Invoke-ApplySecuritySettings {
         if ($key.VirtualKeyCode -eq 13) { # Enter
             $valid = $true
             Write-Host ""
-            Write-Header "APPLYING SETTINGS"
+            # EDITED: Changed header style to Boundary first, then Text
+            Write-Boundary $FGDarkBlue
+            Write-Centered "$FGDarkCyan$Char_EnDash Security Features ENABLE $Char_EnDash$Reset"
+            
             Apply-SecuritySettings
             Write-LeftAligned "$FGGreen Settings applied.$Reset" -Indent 3
             Write-Boundary $FGDarkBlue
-        } elseif ($key.Character -eq ' ') { # Space
-            $valid = true
+        } else { # Any other key (Skip)
+            # FIX: Added $ to true
+            $valid = $true
             Write-Host "`n"
             Write-LeftAligned "$FGGray Skipped application.$Reset" -Indent 3
             Write-Log "User skipped applying settings" "INFO"
@@ -629,6 +674,11 @@ try {
     if ($ScriptPath) { $LastEditYear = (Get-Item $ScriptPath).LastWriteTime.Year } else { $LastEditYear = (Get-Date).Year }
 
     Write-Header "WINDOWS SECURITY CONFIGURATOR"
+    
+    # NEW: Added Check Sub-header and Boundary per request
+    Write-Centered "$FGDarkCyan$Char_EnDash Windows Security CHECK $Char_EnDash$Reset"
+    Write-Boundary $FGDarkBlue
+
     Write-Log "Security Check Started" "INFO"
     
     Get-DefenderStatus
@@ -645,16 +695,22 @@ try {
     Show-SecuritySummary
     Invoke-ApplySecuritySettings
 
-    # --- Quick Scan Prompt and Execution ---
+    # --- Scan Prompt and Execution ---
     Write-Host ""
     
     if ($script:ThirdPartyAVActive) {
-        $prompt = "${FGDarkCyan}$Char_Keyboard  Third-Party AV Active: Quick Scan Skipped$Reset"
+        $prompt = "${FGDarkCyan}$Char_Keyboard  Third-Party AV Active: Scan Skipped$Reset"
         Write-Centered $prompt
     } else {
-        # COMPACTED PROMPT by 3 characters (removed spaces around icon and pipe)
-        # CHANGED: "Continue" to "Exit" for Spacebar
-        $prompt = "${FGDarkCyan}$Char_Keyboard ${FGYellow}Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}Enter${Reset}${FGDarkCyan} to Quick Scan | Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}Spacebar${Reset}${FGDarkCyan} to Continue$Reset"
+        # DYNAMIC SCAN TYPE DETERMINATION
+        $ScanTypeString = if ($script:FullScanNeeded) { "Full" } else { "Quick" }
+        $ScanTypeParam = if ($script:FullScanNeeded) { "FullScan" } else { "QuickScan" }
+        
+        # EDITED: Matched specific text and spacing requested
+        # " Press☛ [Enter] to Full Scan | Press☛ [Spacebar] to Continue "
+        # Added space before first Press, removed spaces between Press and Finger, added space between Finger and Bracket.
+        # EDITED: Removed leading space before "Press" as per latest request
+        $prompt = "${FGDarkCyan}Press${FGYellow}$Char_Finger ${FGBlack}${BGYellow}[Enter]${Reset}${FGDarkCyan} to $ScanTypeString Scan | Press${FGYellow}$Char_Finger ${FGBlack}${BGYellow}[Spacebar]${Reset}${FGDarkCyan} to Continue $Reset"
         Write-Centered $prompt
 
         $valid = $false
@@ -664,26 +720,28 @@ try {
                 $valid = $true
                 Write-Host "`n"
                 # UPDATED: FGCyan -> FGDarkCyan for consistency
-                Write-LeftAligned "$FGDarkCyan Starting Quick Scan...$Reset" -Indent 3
-                Write-Log "Starting Quick Scan" "INFO"
-                Start-MpScan -ScanType QuickScan
-                Write-LeftAligned "$FGGreen Scan Complete.$Reset" -Indent 3
-                Write-Log "Quick Scan Complete" "SUCCESS"
+                Write-LeftAligned "$FGDarkCyan Starting $ScanTypeString Scan...$Reset" -Indent 3
+                Write-Log "Starting $ScanTypeString Scan" "INFO"
                 
-                # MOVED HERE: Restart App only on Quick Scan
+                Start-MpScan -ScanType $ScanTypeParam
+                
+                Write-LeftAligned "$FGGreen Scan Complete.$Reset" -Indent 3
+                Write-Log "$ScanTypeString Scan Complete" "SUCCESS"
+                
+                # MOVED HERE: Restart App only on Scan
                 Restart-SecHealthUI
             } elseif ($key.Character -eq ' ') {
                 # CHANGED: Use return to exit script logic immediately but keep window open
                 Write-Host "`n"
-                # LOGIC FIX: Changed text to "Skipping Quick Scan" and removed 'return'
+                # LOGIC FIX: Changed text to "Skipping X Scan" and removed 'return'
                 # to allow the script to proceed to Restart-SecHealthUI and Footer.
-                Write-LeftAligned "$FGGray Skipping Quick Scan...$Reset" -Indent 3
-                Write-Log "User skipped Quick Scan" "INFO"
+                Write-LeftAligned "$FGGray Skipping $ScanTypeString Scan...$Reset" -Indent 3
+                Write-Log "User skipped $ScanTypeString Scan" "INFO"
                 $valid = $true
             }
         }
     }
-    # --- End Quick Scan Execution ---
+    # --- End Scan Execution ---
 
     # REMOVED: Global call to Restart-SecHealthUI
 
