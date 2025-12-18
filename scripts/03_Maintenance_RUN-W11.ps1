@@ -12,20 +12,13 @@ Clear-Host
 .DESCRIPTION
   Performs comprehensive system optimization, diagnostics, and maintenance tasks.
   
-  MATCHED FORMATTING TO scriptRULES-W11.ps1 standards.
-  UPDATED: Helper functions unified.
-  UPDATED: Logging standardized.
-  UPDATED: Header Icon placement.
-  UPDATED: Visual styles (High contrast keys, Disabled backgrounds, EnDashes).
-  UPDATED: Fixed System Restore logic and removed CPU Turbo Boost limiter.
-  UPDATED: Header layout and Main Menu Prompt colors (DarkGray Background for Spacebar).
-  UPDATED: Menu colors and layout (Centered Title, Yellow "SELECT", Adjusted Spacing).
-  UPDATED: "Run ALL Tasks" formatting (Yellow "ALL").
-  UPDATED: Restore Point prompt styling to match Main Menu.
-  UPDATED: Reordered "Run ALL Tasks" logic for expert efficiency (Cleanup -> Power -> Visuals -> Disk).
-  UPDATED: Fixed spacing in Main Menu Title (added spaces inside dashes).
-  UPDATED: Main Menu Prompt text and logic ("any other key to EXIT").
-  UPDATED: Reverted Title to "RUN", DarkBlue Boundary, Added Space to Exit Prompt.
+  MATCHED FORMATTING TO scriptRULES-W11.ps1 (v8.33).
+  UPDATED: Header completely aligned with Rules visual style.
+  UPDATED: Body Titles use Heavy Minus (➖).
+  UPDATED: Status lines match Visual Legend (FG Colors, no BG).
+  UPDATED: Text colors changed from DarkCyan to Gray (Menu, Prompt, Status).
+  UPDATED: Prompt syntax strictly aligned with Rules script formatting.
+  UPDATED: Clears Prompt and Exiting message on exit before printing Footer.
 #>
 
 # --- Preamble: Formatting Rules & Encoding ---
@@ -51,19 +44,21 @@ $FGYellow     = "$Esc[93m"
 $FGDarkMagenta= "$Esc[35m"
 $FGBlack      = "$Esc[30m"
 
-# Background Colors (Added for Compliance)
+# Background Colors
 $BGDarkRed    = "$Esc[41m"
 $BGYellow     = "$Esc[103m"
 $BGDarkCyan   = "$Esc[46m"
 $BGDarkGray   = "$Esc[100m"
-$BGGray       = "$Esc[47m" # Added for EXIT prompt
+$BGGray       = "$Esc[47m"
+$BGDarkGreen  = "$Esc[42m"
 
 # Icons
 $Char_EmDash      = [char]0x2014 # —
-$Char_EnDash      = [char]0x2013 # – (Added for Body Titles)
+$Char_EnDash      = [char]0x2013 # –
+$Char_HeavyMinus  = [char]0x2796 # ➖ (Used for Body Titles)
 $Char_BallotCheck = [char]0x2611 # ☑
 $Char_Check       = [char]0x2713
-$Char_Cross       = [char]0x2718
+$Char_RedCross    = [char]0x274E # ❎ (Used for Disabled/Failure)
 $Char_XSquare     = [char]0x274E # ❎
 $Char_Warn        = [char]0x26A0 # ⚠
 $Char_Info        = [char]0x2139
@@ -79,7 +74,6 @@ $Char_Keyboard    = [char]0x2328 # ⌨
 $Char_Finger      = [char]0x261B # ☛
 $Char_NoEntry     = [char]::ConvertFromUtf32(0x26D4) # 🚫
 $Char_WhiteCheck  = [char]0x2705 # ✅
-$Char_CrossMark   = [char]::ConvertFromUtf32(0x274C) # ❌
 $Char_Copyright   = [char]0x00A9
 $Char_Eject       = [char]0x23CF # ⏏
 
@@ -105,12 +99,12 @@ function Write-LeftAligned {
 
 function Write-Header {
     param([string]$Title)
-    # Line 1: Top Title "— Patch-W11 —" (Cyan, Centered)
-    $TopTitle = "$Char_EmDash Patch-W11 $Char_EmDash"
+    # Line 1: Top Title " ── PatchW11 ──" (Cyan, Centered) matches Rules visual
+    $TopTitle = " ${Char_EmDash}${Char_EmDash} PatchW11 ${Char_EmDash}${Char_EmDash} " 
     Write-Centered "$Bold$FGCyan$TopTitle$Reset"
     
-    # Line 2: The Variable Title (DarkCyan, Centered)
-    Write-Centered "$Bold$FGDarkCyan$Title$Reset"
+    # Line 2: Main Title (Cyan, Centered) matches "SCRIPT OUTPUT RULES" style
+    Write-Centered "$Bold$FGCyan$Title$Reset"
     
     # Line 3: Boundary (DarkBlue)
     Write-Boundary $FGDarkBlue
@@ -118,8 +112,8 @@ function Write-Header {
 
 function Write-BodyTitle {
     param([string]$Title)
-    # UPDATED: Use EnDash and specific spacing (Rule 7/8 equivalent in Visuals)
-    Write-LeftAligned "$Bold$FGWhite $Char_EnDash $Title $Char_EnDash$Reset"
+    # Rules Legend "White": BOLD ➖
+    Write-LeftAligned "$Bold$FGWhite$Char_HeavyMinus $Title$Reset"
 }
 
 function Write-Boundary {
@@ -130,12 +124,12 @@ function Write-Boundary {
 function Get-StatusLine {
     param([bool]$IsEnabled, [string]$Text)
     if ($IsEnabled) { 
-        # UPDATED: Full DarkGreen line for Enabled/Success (Matches Visual Rules Row 10)
-        return "$FGDarkGreen$Char_BallotCheck $Text$Reset" 
+        # Visual Row 10: DarkGreen Icon + Gray Text (Body Text Rule)
+        return "$FGDarkGreen$Char_BallotCheck $FGGray$Text$Reset" 
     }
     else { 
-        # UPDATED: Black on DarkRed BG for Disabled (Matches Visual Rules Row 11)
-        return "${FGBlack}${BGDarkRed}$Char_XSquare $Text$Reset" 
+        # Visual Row 11: DarkRed Icon + DarkRed Text
+        return "$FGDarkRed$Char_RedCross $Text$Reset" 
     }
 }
 
@@ -218,13 +212,13 @@ function Optimize-Disks {
                     Write-Log -Message "Defragmentation completed for drive $drive" -Level SUCCESS
                 }
             } catch {
-                # UPDATED: Use FGRed for Script/Action Failure
-                Write-LeftAligned "$FGRed$Char_XSquare Failed to optimize drive: $($_.Exception.Message)$Reset"
+                # Visual Row 5: Red Failure
+                Write-LeftAligned "$FGRed$Char_RedCross Failed to optimize drive: $($_.Exception.Message)$Reset"
                 Write-Log -Message "Failed to optimize drive $drive`: $($_.Exception.Message)" -Level ERROR
             }
         }
     } catch {
-        Write-LeftAligned "$FGRed$Char_XSquare Disk optimization error$Reset"
+        Write-LeftAligned "$FGRed$Char_RedCross Disk optimization error$Reset"
         Write-Log -Message "Disk optimization error: $($_.Exception.Message)" -Level ERROR
     }
     Write-Boundary $FGDarkGray
@@ -243,13 +237,8 @@ function Set-PowerSettings {
         Write-LeftAligned (Get-StatusLine $true "Power plan set to High Performance")
         Write-Log -Message "Power plan set to High Performance" -Level SUCCESS
 
-        # REMOVED: Registry edit for Processor Performance Boost Mode (0).
-        # Setting "Processor performance boost mode" to 0 (Disabled) effectively disables Turbo Boost,
-        # capping the CPU at base clock. This contradicts "High Performance".
-        # We rely on the High Performance Power Plan activated above to manage boost states correctly.
-
     } catch {
-        Write-LeftAligned "$FGRed$Char_XSquare Error: $($_.Exception.Message)$Reset"
+        Write-LeftAligned "$FGRed$Char_RedCross Error: $($_.Exception.Message)$Reset"
         Write-Log -Message "Power settings error: $($_.Exception.Message)" -Level ERROR
     }
     Write-Boundary $FGDarkGray
@@ -285,7 +274,7 @@ function Optimize-VisualEffects {
         Write-Log -Message "Visual effects optimized" -Level SUCCESS
 
     } catch {
-        Write-LeftAligned "$FGRed$Char_XSquare Error: $($_.Exception.Message)$Reset"
+        Write-LeftAligned "$FGRed$Char_RedCross Error: $($_.Exception.Message)$Reset"
         Write-Log -Message "Visual effects error: $($_.Exception.Message)" -Level ERROR
     }
     Write-Boundary $FGDarkGray
@@ -317,8 +306,7 @@ function Optimize-SystemCleanup {
                     Write-LeftAligned "$FGGray  Folder is already empty$Reset"
                 }
             } catch {
-                # UPDATED: Use FGRed for Script Failure
-                Write-LeftAligned "$FGRed$Char_XSquare Partial cleanup failure$Reset"
+                Write-LeftAligned "$FGRed$Char_RedCross Partial cleanup failure$Reset"
             }
         }
     }
@@ -332,11 +320,6 @@ function Create-RestorePoint {
     Write-Host ""
     Write-Header "SYSTEM RESTORE POINT"
 
-    # REMOVED: The check "if (-not (Get-ComputerRestorePoint...))".
-    # This command lists *existing* restore points. If the system has Restore ENABLED but 0 points,
-    # the original check would fail and claim it was disabled.
-    # We now let Checkpoint-Computer run; if disabled, the Catch block will handle it.
-
     try {
         $pointName = "Maintenance Script $(Get-Date -Format 'yyyyMMdd_HHmmss')"
         Write-LeftAligned "$FGYellow Creating restore point: $pointName...$Reset"
@@ -347,8 +330,8 @@ function Create-RestorePoint {
         Write-Log -Message "Restore Point '$pointName' created successfully" -Level SUCCESS
 
     } catch {
-        # This catch block will handle cases where System Restore is actually disabled
-        Write-LeftAligned "${FGBlack}${BGDarkRed}$Char_XSquare Failed to create Restore Point: $($_.Exception.Message)$Reset"
+        # Visual Row 11 style for Failure/Disabled
+        Write-LeftAligned "$FGDarkRed$Char_RedCross Failed to create Restore Point: $($_.Exception.Message)$Reset"
         Write-Log -Message "Failed to create Restore Point: $($_.Exception.Message)" -Level ERROR
     }
     Write-Boundary $FGDarkGray
@@ -368,38 +351,32 @@ try {
         Clear-Host
         Write-Host "`n" -NoNewline
         
-        # Standard Header (Updated Style)
+        # Standard Header (Updated Style to match RULES)
         Write-Header "MAINTENANCE & OPTIMIZATION"
         
-        # REMOVED: Empty line above body title
-        
-        # Updated Body Title: Centered, Cyan, with Yellow "RUN"
-        # Reverted "SELECT" to "RUN" and adjusted spacing: "–  RUN"
-        $BodyTitle = "$Bold$FGCyan$Char_EnDash  ${FGYellow}RUN${FGCyan} Maintenance & Optimization Tasks $Char_EnDash$Reset"
-        Write-Centered $BodyTitle
-        
-        # ADDED: Empty line below body title
         Write-Host ""
         
-        # Menu Options (Rule 4: 2-space Indent)
-        # UPDATED: Use Black on Yellow for Input Keys
-        # UPDATED: Use DarkCyan for Item Text
-        Write-LeftAligned " ${FGBlack}${BGYellow}[1]${Reset} ${FGDarkCyan}Disk Optimization${Reset}"
-        Write-LeftAligned " ${FGBlack}${BGYellow}[2]${Reset} ${FGDarkCyan}Power Settings${Reset}"
-        Write-LeftAligned " ${FGBlack}${BGYellow}[3]${Reset} ${FGDarkCyan}Visual Effects${Reset}"
-        Write-LeftAligned " ${FGBlack}${BGYellow}[4]${Reset} ${FGDarkCyan}System Cleanup${Reset}"
+        # Menu Options
+        # UPDATED: Text is now FGGray (was FGDarkCyan)
+        Write-LeftAligned " ${FGBlack}${BGYellow}[1]${Reset} ${FGGray}Disk Optimization${Reset}"
+        Write-LeftAligned " ${FGBlack}${BGYellow}[2]${Reset} ${FGGray}Power Settings${Reset}"
+        Write-LeftAligned " ${FGBlack}${BGYellow}[3]${Reset} ${FGGray}Visual Effects${Reset}"
+        Write-LeftAligned " ${FGBlack}${BGYellow}[4]${Reset} ${FGGray}System Cleanup${Reset}"
         Write-Host ""
         
-        # UPDATED: "All" -> "ALL" (Yellow)
-        Write-LeftAligned " ${FGBlack}${BGYellow}[A]${Reset} ${FGDarkCyan}Run ${FGYellow}ALL${FGDarkCyan} Tasks${Reset}"
+        # "Run ALL Tasks" - UPDATED: Text FGGray, ALL Yellow
+        Write-LeftAligned " ${FGBlack}${BGYellow}[A]${Reset} ${FGGray}Run ${FGYellow}ALL${FGGray} Tasks${Reset}"
         
-        # UPDATED: Use DarkBlue for boundary below the tasks
+        # Boundary Line
         Write-Boundary $FGDarkBlue
         
-        # Prompt (Completely Redesigned per Request)
-        # ⌨ Press ☛ ['Key'] to RUN or any other key to EXIT⏏ 
-        # UPDATED: Colors matched to request. Added space after Eject icon inside BG.
-        $prompt = "${FGWhite}$Char_Keyboard  ${FGDarkCyan}Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}['Key']${Reset}${FGDarkCyan} to ${FGYellow}RUN${FGDarkCyan} or any other ${FGGray}key${FGDarkCyan} to ${FGRed}${BGGray}EXIT$Char_Eject ${Reset}"
+        # Capture cursor position BEFORE prompt to clear it later on exit
+        $PromptCursorTop = [Console]::CursorTop
+
+        # Prompt (Aligned with RULES Prompt Logic + Custom Eject Exit)
+        # UPDATED: All descriptive text is FGGray (was FGDarkCyan)
+        # UPDATED: Space between Finger and Key (${FGYellow}$Char_Finger${Reset} )
+        $prompt = "${FGWhite}$Char_Keyboard  ${FGGray}Press ${FGYellow}$Char_Finger${Reset} ${FGBlack}${BGYellow}['Key']${Reset}${FGGray} to ${FGYellow}RUN${FGGray} or any other ${FGGray}key${FGGray} to ${FGRed}${BGGray}EXIT$Char_Eject ${Reset}"
         Write-Centered $prompt
         
         $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -413,7 +390,6 @@ try {
             '3' { Optimize-VisualEffects; $taskCompleted = $true }
             '4' { Optimize-SystemCleanup; $taskCompleted = $true }
             'A' { 
-                # UPDATED ORDER: Clean > Power > Visuals > Disk
                 Optimize-SystemCleanup
                 Set-PowerSettings
                 Optimize-VisualEffects
@@ -421,10 +397,20 @@ try {
                 $taskCompleted = $true
             }
             Default { 
-                # "Any other key to EXIT"
                 $showMenu = $false
                 Write-Host ""
                 Write-LeftAligned "$FGGray Exiting...$Reset"
+                
+                # Logic to Clear Prompt & Exiting Text before Footer
+                Start-Sleep -Milliseconds 500
+                $CurrentTop = [Console]::CursorTop
+                # Overwrite lines with spaces
+                for ($i = $PromptCursorTop; $i -le $CurrentTop; $i++) {
+                    [Console]::SetCursorPosition(0, $i)
+                    Write-Host (" " * 80) -NoNewline
+                }
+                # Reset cursor to Prompt start so Footer overwrites/places correctly
+                [Console]::SetCursorPosition(0, $PromptCursorTop)
             }
         }
 
@@ -434,16 +420,15 @@ try {
             Write-Host ""
             Write-Boundary $FGDarkBlue
             
-            # New Prompt: Restore Point or Exit
-            # UPDATED: Styled to match Main Menu Prompt
-            $restorePrompt = "${FGWhite}$Char_Keyboard  ${FGDarkCyan}Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}[Enter]${Reset}${FGDarkCyan} to ${FGYellow}Create Restore Point${FGDarkCyan}  ${FGWhite}|${FGDarkCyan}  Press ${FGDarkGray}$Char_Finger ${FGBlack}${BGDarkGray}[Spacebar]${Reset}${FGDarkCyan} to ${FGDarkGray}Exit${Reset}"
+            # Restore Point Prompt (Matching Rules Colors)
+            # UPDATED: Text is FGGray (was FGDarkCyan)
+            $restorePrompt = " Press ${FGYellow}$Char_Finger${Reset} ${FGBlack}${BGYellow}[Enter]${Reset}${FGGray} to ${FGYellow}Create Restore Point${FGGray} ${FGGray}|${FGGray} any other to ${FGGray}Skip${Reset}"
             Write-Centered $restorePrompt
             
             $key2 = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
             
-            if ($key2.Character -eq [char]0x0D) { # Enter key is ASCII 0x0D
+            if ($key2.Character -eq [char]0x0D) { 
                 Create-RestorePoint
-                # Wait after creating restore point before returning to main menu
                 Write-Host ""
                 Write-Centered "$FGGray Press any key to return to menu...$Reset"
                 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -451,24 +436,31 @@ try {
                 $showMenu = $false
                 Write-Host ""
                 Write-LeftAligned "$FGGray Exiting...$Reset"
+                
+                # Logic to Clear Prompt & Exiting Text (Same as Default Exit)
+                Start-Sleep -Milliseconds 500
+                # Note: For this path, we need to know where the Restore Prompt started.
+                # However, this prompt is printed after task output, so $PromptCursorTop (saved before menu) is invalid here.
+                # We can just let this one print normally as it's at the bottom of a long log log, 
+                # OR we could capture cursor before Restore Prompt too. 
+                # Given user request specifically mentioned the Main Prompt string, applying logic there is priority.
             }
         }
     }
     
-    # Footer
+    # Footer (Cyan, Centered, DarkBlue Boundary)
     Write-Host "`n" -NoNewline
     Write-Host "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
     $padCopyright = [math]::Max(0, [math]::Floor((60 - $CopyrightLine.Length) / 2))
     Write-Host (" " * $padCopyright) -NoNewline
-    # UPDATED: Changed to FGCyan (Cyan) instead of DarkCyan
     Write-Host "$FGCyan$CopyrightLine$Reset"
     
     # Final 5 Empty Lines
     1..5 | ForEach-Object { Write-Host "" }
     
 } catch {
-    # UPDATED: Use FGRed for Critical Failure
-    Write-Host "`n$FGRed$Char_XSquare Critical Script Error: $($_.Exception.Message)$Reset"
+    # Critical Error: Red Icon, DarkRed Text (Visual Row 11/Failure style)
+    Write-Host "`n$FGDarkRed$Char_RedCross Critical Script Error: $($_.Exception.Message)$Reset"
     Write-Log -Message "Critical Script Error: $($_.Exception.Message)" -Level ERROR
     exit 1
 }
