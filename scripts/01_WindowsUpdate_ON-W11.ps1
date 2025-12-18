@@ -497,11 +497,32 @@ Show-WUStatus
 # --- User Prompt ---
 Write-Host ""
 $prompt = "${FGDarkCyan}$Char_Keyboard  ${FGYellow}Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}Enter${Reset}${FGDarkCyan} to Run Checks  |  Press ${FGYellow}$Char_Finger ${FGBlack}${BGYellow}Spacebar${Reset}${FGDarkCyan} to Skip$Reset"
+
+# Capture cursor position for UI cleanup
+$PromptCursorTop = [Console]::CursorTop
+
 Write-Centered $prompt
 
 do {
     $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 } while ($key.VirtualKeyCode -ne 13 -and $key.Character -ne ' ')
+
+# --- UI Cleanup: Clear Prompt ---
+try {
+    Start-Sleep -Milliseconds 200 # Slight delay for UX
+    $CurrentTop = [Console]::CursorTop
+    # Overwrite prompt lines with spaces
+    for ($i = $PromptCursorTop; $i -le $CurrentTop; $i++) {
+        [Console]::SetCursorPosition(0, $i)
+        Write-Host (" " * 80) -NoNewline
+    }
+    # Reset cursor to start of prompt
+    [Console]::SetCursorPosition(0, $PromptCursorTop)
+} catch {
+    # Fallback if console manipulation fails
+    Write-Host ""
+}
+# --------------------------------
 
 if ($key.VirtualKeyCode -eq 13) {
     Invoke-COMUpdateCheck
