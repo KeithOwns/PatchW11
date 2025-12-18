@@ -16,7 +16,7 @@
 
 .NOTES
     Author: PatchW11 Team
-    Version: 8.33 (Ensured Copyright Persists on Exit)
+    Version: 8.40 (Black on White About Header)
     Repository: https://github.com/KeithOwns/PatchW11
 #>
 
@@ -44,6 +44,11 @@ $Char_RedCross    = [char]0x274E # ❎ - Used for Red Failure (SCRIPT Failure) /
 $Char_Finger      = [char]0x261B # ☛ - Used for Yellow Keypress
 $Char_GreaterThan = [char]0x003E # > - Used for Blue Body Icon representation
 $Char_HeavyMinus  = [char]0x2796 # ➖ - Used for Gray Text representation
+
+# --- NEW CHARACTERS FOR UPDATED MOCKUP ---
+$Char_HeavyLine   = [char]0x2501 # ━ - Used for main headers and footers
+$Char_LightLine   = [char]0x2500 # ─ - Used for prompt top border and legend title
+$Char_Overline    = [char]0x203E # ‾ - Used for table header separator
 
 # --- ANSI Escape Sequences for Color Formatting (PS 5.1 Compatible) ---
 $Esc = [char]0x1B
@@ -76,43 +81,28 @@ $BGDarkGreen  = "$Esc[42m"  # Background Dark Green (for System Enabled Text)
 $BGDarkCyan   = "$Esc[46m"  # Background Dark Cyan (for Rule A.7 text)
 $BGDarkGray   = "$Esc[100m" # Background Dark Gray
 
-    # Helper for formatted column output
+# Helper for formatted column output
 function Write-Row {
-    # Note: HexCode argument is kept for compatibility but ignored in output
+    # Cleaned up parameters: Removed unused $Type and $HexCode
     # Added [string] type cast to DefaultString to fix .Length error on char inputs
-    param($ColorName, $ANSI, $About, $Type, $HexCode, [string]$DefaultString, $ColorCode) 
+    param($ColorName, $ANSI, $About, $Where, [string]$DefaultString, $ColorCode) 
 
     # Column Width Configuration
     $Width_TextColor   = 11
     $Width_ANSI        = 7  
     $Width_About       = 7
-    
-    # Removed $Width_Type (was 9)
-
-    # Width 14 to fit "Default_String" (14 chars) exactly
-    $Width_DefaultString = 14 
+    $Width_Where       = 9  # New Column Width
     
     # Apply dynamic color to TextColor and pad the result (11 characters) - RIGHT ALIGNED
     $CNameUncoloredPadded = $ColorName.PadLeft($Width_TextColor)
     
     $ANSIPadded   = $ANSI.PadRight($Width_ANSI)
     $AboutPadded  = $About.PadLeft($Width_About) # RIGHT ALIGNED
-    # Removed $TypePadded
+    $WherePadded  = $Where.PadRight($Width_Where) # LEFT ALIGNED
     
-    # Calculate Centering for DefaultString
-    # FIX: Strip ANSI codes before calculating length to ensure visual centering is correct
-    $CleanDefaultString = $DefaultString -replace "$Esc\[[^m]*m", ""
-    $ContentLength = $CleanDefaultString.Length
-    
-    # Calculate left padding to center the string in a 14-char field
-    $PadLeftVal = [Math]::Max(0, [Math]::Floor(($Width_DefaultString - $ContentLength) / 2))
-    
-    # Assemble the output line (4 columns + spacing for DefaultString)
-    # The '   ' here is reduced from the original (9 characters of $TypePadded + 3 characters of space = 12 total spaces/padding, now 3)
-    $OutputLine = " ${ColorCode}${CNameUncoloredPadded}${Reset} $ANSIPadded$AboutPadded "
-    
-    # Append the DefaultString content (Centered)
-    $OutputLine += (" " * $PadLeftVal) + "${ColorCode}$DefaultString${Reset}"
+    # Assemble the output line (5 columns + spacing for DefaultString)
+    # Added a space between $AboutPadded and $WherePadded to prevent merging (e.g. "ScriptHdr")
+    $OutputLine = " ${ColorCode}${CNameUncoloredPadded}${Reset} $ANSIPadded$AboutPadded $WherePadded ${ColorCode}$DefaultString${Reset}"
     
     Write-Host $OutputLine
 }
@@ -128,14 +118,14 @@ function Show-VisualExamples {
     Write-Output ""
 
     # --- TOP TITLE ---
-    # DELETED: Removed "── PatchW11 ──" line as per user request ("Delete all text printed in the line just above the 'SCRIPT OUTPUT RULES'")
+    # DELETED: Removed "── PatchW11 ──" line as per user request
     # Note: Only blank line remains.
 
     # --- SUB-HEADER (Updated) ---
     
-    # NEW: Add " ── PatchW11 ──" line above "SCRIPT OUTPUT RULES"
-    # Using the Cyan line style from Legend
-    $PatchW11Title = " ── PatchW11 ──"
+    # NEW: Add " ━ PatchW11 ━" line above "SCRIPT OUTPUT RULES"
+    # Using the Heavy Line style from Mockup
+    $PatchW11Title = " $Char_HeavyLine PatchW11 $Char_HeavyLine"
     $PatchW11Length = $PatchW11Title.Length
     $PatchW11Padding = [Math]::Floor((60 - $PatchW11Length) / 2)
     
@@ -154,13 +144,13 @@ function Show-VisualExamples {
 
     # --- PART 1: SCRIPT OUTPUT LEGEND ---
 
-    # DarkBlue Separator Line (60 em dashes)
-    Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset" # Boundary on its own line
+    # DarkBlue Separator Line (60 Heavy Lines) - UPDATED TO MOCKUP
+    Write-Output "$FGDarkBlue$([string]$Char_HeavyLine * 60)$Reset" # Boundary on its own line
 
     # Script Output LEGEND Title (Center-aligned and revised)
-    # FIX: Applying FGCyan to the en dashes as requested by the user.
-    $LegendTitle = "${FGCyan}$Char_EnDash Script Output LEGEND $Char_EnDash$Reset"
-    $LegendTitleLength = 24 # Calculated length: 1+1+20+1+1 = 24 (excluding color codes)
+    # UPDATED: Using Light Lines ($Char_LightLine) instead of EnDash
+    $LegendTitle = "${FGCyan}$Char_LightLine Script Output LEGEND $Char_LightLine$Reset"
+    $LegendTitleLength = 24 # Calculated length approx
     $LegendTitlePadding = [Math]::Floor((60 - $LegendTitleLength) / 2)
     
     Write-Output (" " * $LegendTitlePadding + $LegendTitle)
@@ -171,22 +161,25 @@ function Show-VisualExamples {
     # Header: Aligned with data columns using same spacing structure
     $Header_TextColor = "Color".PadLeft(11)  # RIGHT ALIGNED
     $Header_ANSI      = "ANSI".PadRight(7)   # Renamed from ANSIFg
-    $Header_About     = "About".PadLeft(7)   # RIGHT ALIGNED
-    # REMOVED $Header_Type = "Type".PadRight(9)
+    # EDITED: "  About" (7 chars) is now Black Text on White Background
+    $Header_About     = "${FGBlack}${BGWhite}  About${Reset}" 
+    $Header_Where     = "Where".PadRight(9)  # LEFT ALIGNED
 
     # Center DefaultString Header
     $DefaultStringText = "Default_String" # Changed from DefaultString
-    $Width_DefaultString = 14
-    # EDITED: Added +1 to PadLeftHeader to shift header right by one space
-    $PadLeftHeader = [Math]::Max(0, [Math]::Floor(($Width_DefaultString - $DefaultStringText.Length) / 2)) + 1
-    $Header_DefaultString = (" " * $PadLeftHeader) + $DefaultStringText
     
-    # 1 Space leading indentation (was 2)
-    # Adjusted spacing for removed 'Type' column (9 spaces removed from the original line)
-    Write-Output " ${FGGray}$Header_TextColor $Header_ANSI$Header_About $Header_DefaultString$Reset"
+    # EDITED: Mockup shows "About  Default_String" (2 spaces). 
+    # Write-Row adds 1 space auto, so we add 1 leading space to text.
+    $Header_DefaultString = " $DefaultStringText"
+    
+    # 1 Space leading indentation (matches Write-Row prefix)
+    # Added space between Header_About and Header_Where to match Write-Row logic
+    # Re-added ${FGGray} after Header_About to ensure subsequent text remains gray
+    Write-Output " ${FGGray}$Header_TextColor $Header_ANSI$Header_About ${FGGray}$Header_Where$Header_DefaultString$Reset"
 
-    # Table Separator (White, Indented, 56 chars) - CHANGE 2
-    Write-Output "$FGDarkGray$([string]$Char_EmDash * 60)$Reset"
+    # Table Separator (White/DarkGray, Indented, 60 chars) - UPDATED TO OVERLINE
+    # Mockup shows: ‾‾‾‾‾‾‾‾‾‾‾‾...
+    Write-Output "$FGDarkGray$([string]$Char_Overline * 60)$Reset"
 
     # --- ROW DATA (Rearranged) ---
     
@@ -194,92 +187,74 @@ function Show-VisualExamples {
     $HexEmDash = "0x2014 "
     $HexEnDash = "0x2013"
     
-    # Boundary String (15 dashes)
-    $BoundaryString = [string]$Char_EmDash * 15
-
     # 1. Cyan (Header Title)
-    # NO SPACING CHANGE
-    $CyanDefaultString = " ── PatchW11 ──"
-    # EDITED: "script" -> "Script"
-    Write-Row "Cyan"       "\e[96m" "Script" " " "0x2014 " $CyanDefaultString $FGCyan
+    # UPDATED: Centered in 14-char col " ━ PatchW11 ━" (1 space padding)
+    $CyanDefaultString = " $Char_HeavyLine PatchW11 $Char_HeavyLine"
+    Write-Row "Cyan"       "\e[96m" "Script" "Hdr/Ftr" $CyanDefaultString $FGCyan
     
     # 2. DarkBlue (Header Boundary)
-    # NO SPACING CHANGE
-    $DarkBlueDefaultString = "$([string]$Char_EmDash * 15)"
-    # EDITED: "script" -> "Script"
-    Write-Row "DarkBlue"   "\e[34m" "Script" " " "0x2014 " $DarkBlueDefaultString $FGDarkBlue
+    # UPDATED: 20 Heavy Lines (0 spaces)
+    $DarkBlueDefaultString = "$([string]$Char_HeavyLine * 20)"
+    Write-Row "DarkBlue"   "\e[34m" "Script" "Lines" $DarkBlueDefaultString $FGDarkBlue
 
     # 3. DarkCyan (Output Text)
     # DELETED: "DarkCyan \e[36m Script  ☛ ⌨ ⏭️" line removed completely per request.
     
     # 4. Green (SCRIPT Success) - MOVED UP
-    # EDITED: Added 1 space to the right
-    $GreenDefaultString = " $Char_HeavyCheck Success!"
-    # EDITED: "script" -> "Script"
-    Write-Row "Green"      "\e[92m" "Script" " " "0x2705" $GreenDefaultString $FGGreen
+    # EDITED: "   ✅ Success!" (3 spaces)
+    $GreenDefaultString = "   $Char_HeavyCheck Success!"
+    Write-Row "Green"      "\e[92m" "Script" "Output" $GreenDefaultString $FGGreen
 
     # 5. Red (SCRIPT Failure) - MOVED UP
-    # EDITED: Added 1 space to the right
-    $RedDefaultString = " $Char_RedCross Failure!"
-    # EDITED: "script" -> "Script"
-    Write-Row "Red"        "\e[91m" "Script" " " "0x274E" $RedDefaultString $FGRed
+    # EDITED: "   ❎ Failure!" (3 spaces)
+    $RedDefaultString = "   $Char_RedCross Failure!"
+    Write-Row "Red"        "\e[91m" "Script" "Output" $RedDefaultString $FGRed
     
     # 6. Yellow (Input Keypress) - MOVED UP
-    # NO SPACING CHANGE
+    # EDITED: "    ☛ [Key]" (4 spaces)
     $YellowDefaultString = "Yellow \e[93m  script    ☛ [Key]"
-    $YellowContent = "$Char_Finger ${FGBlack}${BGYellow}[Key]${Reset}"
-    # EDITED: "script" -> "Script"
-    Write-Row "Yellow"     "\e[93m" "Script" " " "0x261B" $YellowContent $FGYellow
+    $YellowContent = "    $Char_Finger ${FGBlack}${BGYellow}[Key]${Reset}"
+    Write-Row "Yellow"     "\e[93m" "Script" "Input" $YellowContent $FGYellow
     
     # 7. White (Body Title) - MOVED DOWN
-    # CHANGED: "DEFAULT       ➖" to "BOLD         ➖" (About column text changed)
-    # Centering math: To get 7 spaces gap (1 auto + 6 pad). (14 - Len)/2 = 6 -> Len = 2.
-    # Content: HeavyMinus + 1 space.
-    # EDITED: "White \e[97m BOLD         ➖"
-    # Content: Just "$Char_HeavyMinus" (Heavy Minus)
-    $WhiteContent = "$Char_HeavyMinus"
-    Write-Row "White"      "\e[97m" "BOLD  " " " $HexEnDash $WhiteContent $FGWhite
+    # UPDATED: Centered in 14-char col "      ➖" (6 spaces padding)
+    # CLEANUP: Changed "Bold  " to "Bold" to fix alignment (PadLeft pushes pure text to right)
+    $WhiteContent = "      $Char_HeavyMinus" 
+    Write-Row "White"      "\e[97m" "Bold" "Body" $WhiteContent $FGWhite
     
     # 8. Gray (Body Text) - MOVED DOWN
-    # CHANGED: "DEFAULT      –" to "regular      –" (About column text changed)
-    # Centering math: To get 6 spaces gap (1 auto + 5 pad). (14 - Len)/2 = 5 -> Len = 4.
-    # Content: EnDash + 3 spaces.
-    # EDITED: "Gray \e[37m regular       –"
-    # EDITED: Added spaces to $GrayContent to shift dash right
-    # Old: "$Char_EnDash"
-    # New: "       $Char_EnDash" (7 spaces padding)
-    # CORRECTED SPACING: Matches "regular       –" (7 spaces)
-    $GrayContent = "       $Char_EnDash"
-    Write-Row "Gray"       "\e[37m" "regular" " " "0x2D" $GrayContent $FGGray
+    # UPDATED: "      -" (6 spaces)
+    $GrayContent = "      $Char_Hyphen"
+    Write-Row "Gray"       "\e[37m" "Regular" "Body" $GrayContent $FGGray
 
     # 9. DarkGray (Body Boundary) - MOVED DOWN
-    # NO SPACING CHANGE
-    $DarkGrayDefaultString = "$([string]$Char_EmDash * 15)"
-    Write-Row "DarkGray"   "\e[90m" "System" " " "0x2014 " $DarkGrayDefaultString $FGDarkGray
+    # UPDATED: 20 Light Lines (0 spaces)
+    $DarkGrayDefaultString = "$([string]$Char_LightLine * 20)"
+    Write-Row "DarkGray"   "\e[90m" "System" "Lines" $DarkGrayDefaultString $FGDarkGray
     
     # 10. DarkGreen (System Enabled) - MOVED DOWN
-    # EDITED: Added 1 space to the right
-    $DarkGreenDefaultString = " $Char_BallotCheck  ENABLED"
-    Write-Row "DarkGreen"  "\e[32m" "System" " " "0x2611 " $DarkGreenDefaultString $FGDarkGreen
+    # EDITED: "   ☑  ENABLED" (3 spaces)
+    $DarkGreenDefaultString = "   $Char_BallotCheck  ENABLED"
+    Write-Row "DarkGreen"  "\e[32m" "System" "Output" $DarkGreenDefaultString $FGDarkGreen
 
     # 11. DarkRed (System Disabled) - MOVED DOWN
-    # EDITED: Added 1 space to the right
-    $DarkRedDefaultString = " ${FGDarkRed}$Char_RedCross DISABLED${Reset}"
-    Write-Row "DarkRed"    "\e[31m" "System" " " "0x274E" $DarkRedDefaultString $FGDarkRed
+    # EDITED: "   ❎ DISABLED" (3 spaces)
+    $DarkRedDefaultString = "   ${FGDarkRed}$Char_RedCross DISABLED${Reset}"
+    Write-Row "DarkRed"    "\e[31m" "System" "Output" $DarkRedDefaultString $FGDarkRed
 
     # 12. DarkYellow (System Warning) - MOVED DOWN
-    # EDITED: Added 1 space to the right
-    $DarkYellowDefaultString = " $Char_Warn  WARNING"
-    Write-Row "DarkYellow" "\e[33m" "System" " " "0x26A0 " $DarkYellowDefaultString $FGDarkYellow
+    # EDITED: "   ⚠  WARNING" (3 spaces)
+    $DarkYellowDefaultString = "   $Char_Warn  WARNING"
+    Write-Row "DarkYellow" "\e[33m" "System" "Output" $DarkYellowDefaultString $FGDarkYellow
 
-    # EDITED: Add Fg DarkGray boundary line just below the 'DarkYellow' line
-    Write-Output "$FGDarkGray$([string]$Char_EmDash * 60)$Reset"
+    # EDITED: Add Fg DarkGray LIGHT LINE boundary line just below the 'DarkYellow' line (Mockup Prompt Top)
+    Write-Output "$FGDarkGray$([string]$Char_LightLine * 60)$Reset"
 
     # ADDED EMPTY LINE BELOW YELLOW - CHANGE 3
     Write-Output ""
 
-    # EDITED: Change the ... boundary just above the "Script Output FORMATTING" line to Fg DarkBlue.
-    Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
+    # EDITED: Change the ... boundary just above the "Script Output FORMATTING" line to Fg DarkBlue HEAVY LINE.
+    Write-Output "$FGDarkBlue$([string]$Char_HeavyLine * 60)$Reset"
     
     # --- PART 2: SCRIPT OUTPUT DEFAULTS (HIDDEN BY DEFAULT) ---
 
@@ -333,8 +308,8 @@ if ($ShowRules) {
     # If -ShowRules is used, display the full content immediately
     Show-VisualExamples -ShowFormattingRules $true
     
-    # Add DarkBlue Separator above Copyright
-    Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
+    # Add DarkBlue Separator above Copyright - HEAVY LINE
+    Write-Output "$FGDarkBlue$([string]$Char_HeavyLine * 60)$Reset"
 
     # Display Copyright Footer (Centered and Cyan)
     $FooterText = "$Char_Copyright 2025, www.AIIT.support. All Rights Reserved."
@@ -367,8 +342,8 @@ if ($ShowRules) {
     
     Write-Output (" " * $PromptPadding + $PromptStr)
 
-    # Add DarkBlue Separator above Copyright
-    Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
+    # Add DarkBlue Separator above Copyright - HEAVY LINE
+    Write-Output "$FGDarkBlue$([string]$Char_HeavyLine * 60)$Reset"
 
     # 3. Copyright (Cyan, Centered, below Prompt)
     Write-Output ""
@@ -383,8 +358,8 @@ if ($ShowRules) {
         # 5. Show Rules State (Rules Visible)
         Show-VisualExamples -ShowFormattingRules $true
 
-        # Add DarkBlue Separator above Copyright
-        Write-Output "$FGDarkBlue$([string]$Char_EmDash * 60)$Reset"
+        # Add DarkBlue Separator above Copyright - HEAVY LINE
+        Write-Output "$FGDarkBlue$([string]$Char_HeavyLine * 60)$Reset"
 
         # Redisplay Copyright (ALWAYS LAST)
         Write-Output ""
@@ -397,11 +372,11 @@ if ($ShowRules) {
         try {
             # Clear Prompt line (PromptCursorTop)
             [Console]::SetCursorPosition(0, $PromptCursorTop)
-            Write-Host (" " * 80) -NoNewline
+            Write-Output (" " * 80)
             
             # Clear Separator line (next line)
             [Console]::SetCursorPosition(0, $PromptCursorTop + 1)
-            Write-Host (" " * 80) -NoNewline
+            Write-Output (" " * 80)
             
             # Leave the Copyright lines (Top+2, Top+3) ALONE.
             # We specifically want to clear prompt/boundary but keep footer.
