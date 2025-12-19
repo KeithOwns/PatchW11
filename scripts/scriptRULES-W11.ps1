@@ -16,7 +16,7 @@
 
 .NOTES
     Author: PatchW11 Team
-    Version: 8.40 (Black on White About Header)
+    Version: 8.70 (Consistency Update)
     Repository: https://github.com/KeithOwns/PatchW11
 #>
 
@@ -77,9 +77,13 @@ $BGYellow     = "$Esc[103m" # High Intensity Background Yellow
 $BGWhite      = "$Esc[107m" # High Intensity Background White
 $BGCyan       = "$Esc[106m" # High Intensity Background Cyan (BrightCyan)
 $BGDarkRed    = "$Esc[41m"  # NEW: Background Dark Red
+$BGDarkBlue   = "$Esc[44m"  # Background Dark Blue (New)
 $BGDarkGreen  = "$Esc[42m"  # Background Dark Green (for System Enabled Text)
 $BGDarkCyan   = "$Esc[46m"  # Background Dark Cyan (for Rule A.7 text)
 $BGDarkGray   = "$Esc[100m" # Background Dark Gray
+$BGGreen      = "$Esc[102m" # High Intensity Background Green (Matches FGGreen 92m style)
+$BGRed        = "$Esc[101m" # High Intensity Background Red (Matches FGRed 91m style)
+$BGDarkYellow = "$Esc[43m"  # Background Dark Yellow (ANSI Standard)
 
 # Helper for formatted column output
 function Write-Row {
@@ -89,20 +93,24 @@ function Write-Row {
 
     # Column Width Configuration
     $Width_TextColor   = 11
+    # EDITED: Reduced ANSI width from 8 to 7 to shift following columns left
     $Width_ANSI        = 7  
-    $Width_About       = 7
-    $Width_Where       = 9  # New Column Width
+    $Width_About       = 9  
+    $Width_Where       = 8  
     
     # Apply dynamic color to TextColor and pad the result (11 characters) - RIGHT ALIGNED
     $CNameUncoloredPadded = $ColorName.PadLeft($Width_TextColor)
     
     $ANSIPadded   = $ANSI.PadRight($Width_ANSI)
-    $AboutPadded  = $About.PadLeft($Width_About) # RIGHT ALIGNED
+    # Note: AboutPadded logic here assumes visible length. Since we pass full ANSI strings, 
+    # PadLeft won't add spaces if length > 9. We handle padding INSIDE the input strings.
+    $AboutPadded  = $About.PadLeft($Width_About) 
     $WherePadded  = $Where.PadRight($Width_Where) # LEFT ALIGNED
     
     # Assemble the output line (5 columns + spacing for DefaultString)
     # Added a space between $AboutPadded and $WherePadded to prevent merging (e.g. "ScriptHdr")
-    $OutputLine = " ${ColorCode}${CNameUncoloredPadded}${Reset} $ANSIPadded$AboutPadded $WherePadded ${ColorCode}$DefaultString${Reset}"
+    # EDITED: Reduced to 1 space to align with Header (which was shifted left in 8.67)
+    $OutputLine = " ${ColorCode}${CNameUncoloredPadded}${Reset} $ANSIPadded$AboutPadded $WherePadded${ColorCode}$DefaultString${Reset}"
     
     Write-Host $OutputLine
 }
@@ -160,22 +168,29 @@ function Show-VisualExamples {
     
     # Header: Aligned with data columns using same spacing structure
     $Header_TextColor = "Color".PadLeft(11)  # RIGHT ALIGNED
-    $Header_ANSI      = "ANSI".PadRight(7)   # Renamed from ANSIFg
-    # EDITED: "  About" (7 chars) is now Black Text on White Background
-    $Header_About     = "${FGBlack}${BGWhite}  About${Reset}" 
-    $Header_Where     = "Where".PadRight(9)  # LEFT ALIGNED
+    
+    # EDITED: ANSI Header split to ensure padding spaces are Default color (not Gray)
+    $Header_ANSI_Text = "ANSI"
+    # EDITED: Reduced padding to 4 spaces (Shift Left)
+    $Header_ANSI_Pad  = " " * 4 
+
+    # EDITED: "  About " (shifted text right by 1 space inside block)
+    $Header_About     = "${FGBlack}${BGWhite}  About ${Reset}" 
+    # EDITED: Changed PadRight from 9 to 8 to match data column width reduction
+    $Header_Where     = "Where".PadRight(8)  # LEFT ALIGNED
 
     # Center DefaultString Header
     $DefaultStringText = "Default_String" # Changed from DefaultString
     
-    # EDITED: Mockup shows "About  Default_String" (2 spaces). 
-    # Write-Row adds 1 space auto, so we add 1 leading space to text.
-    $Header_DefaultString = " $DefaultStringText"
+    # EDITED: Removed leading space to shift column left by 1 character
+    $Header_DefaultString = "$DefaultStringText"
     
     # 1 Space leading indentation (matches Write-Row prefix)
     # Added space between Header_About and Header_Where to match Write-Row logic
     # Re-added ${FGGray} after Header_About to ensure subsequent text remains gray
-    Write-Output " ${FGGray}$Header_TextColor $Header_ANSI$Header_About ${FGGray}$Header_Where$Header_DefaultString$Reset"
+    # NEW EDIT: Removed one extra space between $Header_ANSI_Pad and $Header_About as requested
+    # EDITED: Reduced to 1 space between Header_About and Header_Where (shifted left)
+    Write-Output " ${FGGray}$Header_TextColor ${FGGray}$Header_ANSI_Text${Reset}$Header_ANSI_Pad$Header_About ${FGGray}$Header_Where$Header_DefaultString$Reset"
 
     # Table Separator (White/DarkGray, Indented, 60 chars) - UPDATED TO OVERLINE
     # Mockup shows: ‾‾‾‾‾‾‾‾‾‾‾‾...
@@ -188,14 +203,19 @@ function Show-VisualExamples {
     $HexEnDash = "0x2013"
     
     # 1. Cyan (Header Title)
-    # UPDATED: Centered in 14-char col " ━ PatchW11 ━" (1 space padding)
-    $CyanDefaultString = " $Char_HeavyLine PatchW11 $Char_HeavyLine"
-    Write-Row "Cyan"       "\e[96m" "Script" "Hdr/Ftr" $CyanDefaultString $FGCyan
+    # UPDATED: Centered over 20-char lines (4 spaces padding)
+    $CyanDefaultString = "    $Char_HeavyLine PatchW11 $Char_HeavyLine"
+    # UPDATED: About column "  Script " -> 2 spaces lead, 1 space trail
+    $CyanAbout = "${FGBlack}${BGCyan}  Script ${Reset}"
+    Write-Row "Cyan"       "\e[96m" $CyanAbout "Hdr/Ftr" $CyanDefaultString $FGCyan
     
     # 2. DarkBlue (Header Boundary)
     # UPDATED: 20 Heavy Lines (0 spaces)
     $DarkBlueDefaultString = "$([string]$Char_HeavyLine * 20)"
-    Write-Row "DarkBlue"   "\e[34m" "Script" "Lines" $DarkBlueDefaultString $FGDarkBlue
+    # UPDATED: About column "  Script " -> 2 spaces lead, 1 space trail
+    # EDITED: Matches Cyan pattern
+    $DarkBlueAbout = "${FGBlack}${BGDarkBlue}  Script ${Reset}"
+    Write-Row "DarkBlue"   "\e[34m" $DarkBlueAbout "Lines" $DarkBlueDefaultString $FGDarkBlue
 
     # 3. DarkCyan (Output Text)
     # DELETED: "DarkCyan \e[36m Script  ☛ ⌨ ⏭️" line removed completely per request.
@@ -203,49 +223,72 @@ function Show-VisualExamples {
     # 4. Green (SCRIPT Success) - MOVED UP
     # EDITED: "   ✅ Success!" (3 spaces)
     $GreenDefaultString = "   $Char_HeavyCheck Success!"
-    Write-Row "Green"      "\e[92m" "Script" "Output" $GreenDefaultString $FGGreen
+    # UPDATED: About column "  Script " -> 2 spaces lead, 1 space trail
+    $GreenAbout = "${FGBlack}${BGGreen}  Script ${Reset}"
+    Write-Row "Green"      "\e[92m" $GreenAbout "Output" $GreenDefaultString $FGGreen
 
     # 5. Red (SCRIPT Failure) - MOVED UP
     # EDITED: "   ❎ Failure!" (3 spaces)
     $RedDefaultString = "   $Char_RedCross Failure!"
-    Write-Row "Red"        "\e[91m" "Script" "Output" $RedDefaultString $FGRed
+    # UPDATED: About column "  Script " -> 2 spaces lead, 1 space trail
+    $RedAbout = "${FGBlack}${BGRed}  Script ${Reset}"
+    Write-Row "Red"        "\e[91m" $RedAbout "Output" $RedDefaultString $FGRed
     
     # 6. Yellow (Input Keypress) - MOVED UP
     # EDITED: "    ☛ [Key]" (4 spaces)
     $YellowDefaultString = "Yellow \e[93m  script    ☛ [Key]"
     $YellowContent = "    $Char_Finger ${FGBlack}${BGYellow}[Key]${Reset}"
-    Write-Row "Yellow"     "\e[93m" "Script" "Input" $YellowContent $FGYellow
+    # UPDATED: About column "  Script " -> 2 spaces lead, 1 space trail
+    $YellowAbout = "${FGBlack}${BGYellow}  Script ${Reset}"
+    Write-Row "Yellow"     "\e[93m" $YellowAbout "Input" $YellowContent $FGYellow
     
     # 7. White (Body Title) - MOVED DOWN
     # UPDATED: Centered in 14-char col "      ➖" (6 spaces padding)
     # CLEANUP: Changed "Bold  " to "Bold" to fix alignment (PadLeft pushes pure text to right)
     $WhiteContent = "      $Char_HeavyMinus" 
-    Write-Row "White"      "\e[97m" "Bold" "Body" $WhiteContent $FGWhite
+    # UPDATED: Added one space trailing to match visual width of 9 chars
+    # Previous: "   ${FGWhite}BOLD ${Reset}" (Width 8)
+    # New: "   ${FGWhite}BOLD  ${Reset}" (Width 9)
+    $WhiteAbout = "   ${FGWhite}BOLD  ${Reset}"
+    Write-Row "White"      "\e[97m" $WhiteAbout "Body" $WhiteContent $FGWhite
     
     # 8. Gray (Body Text) - MOVED DOWN
     # UPDATED: "      -" (6 spaces)
     $GrayContent = "      $Char_Hyphen"
-    Write-Row "Gray"       "\e[37m" "Regular" "Body" $GrayContent $FGGray
+    # UPDATED: Added one space trailing to match visual width of 9 chars
+    # Previous: "${FGGray} regular${Reset}" (Width 8)
+    # New: "${FGGray} regular ${Reset}" (Width 9)
+    $GrayAbout = "${FGGray} regular ${Reset}"
+    Write-Row "Gray"       "\e[37m" $GrayAbout "Body" $GrayContent $FGGray
 
     # 9. DarkGray (Body Boundary) - MOVED DOWN
     # UPDATED: 20 Light Lines (0 spaces)
     $DarkGrayDefaultString = "$([string]$Char_LightLine * 20)"
-    Write-Row "DarkGray"   "\e[90m" "System" "Lines" $DarkGrayDefaultString $FGDarkGray
+    # UPDATED: About column "  System " -> 2 spaces lead, 1 space trail
+    # Fg White for "System" as requested.
+    $DarkGrayAbout = "${FGWhite}${BGDarkGray}  System ${Reset}"
+    Write-Row "DarkGray"   "\e[90m" $DarkGrayAbout "Lines" $DarkGrayDefaultString $FGDarkGray
     
     # 10. DarkGreen (System Enabled) - MOVED DOWN
     # EDITED: "   ☑  ENABLED" (3 spaces)
     $DarkGreenDefaultString = "   $Char_BallotCheck  ENABLED"
-    Write-Row "DarkGreen"  "\e[32m" "System" "Output" $DarkGreenDefaultString $FGDarkGreen
+    # UPDATED: About column "  System " -> 2 spaces lead, 1 space trail
+    $DarkGreenAbout = "${FGWhite}${BGDarkGreen}  System ${Reset}"
+    Write-Row "DarkGreen"  "\e[32m" $DarkGreenAbout "Output" $DarkGreenDefaultString $FGDarkGreen
 
     # 11. DarkRed (System Disabled) - MOVED DOWN
     # EDITED: "   ❎ DISABLED" (3 spaces)
     $DarkRedDefaultString = "   ${FGDarkRed}$Char_RedCross DISABLED${Reset}"
-    Write-Row "DarkRed"    "\e[31m" "System" "Output" $DarkRedDefaultString $FGDarkRed
+    # UPDATED: About column "  System " -> 2 spaces lead, 1 space trail
+    $DarkRedAbout = "${FGWhite}${BGDarkRed}  System ${Reset}"
+    Write-Row "DarkRed"    "\e[31m" $DarkRedAbout "Output" $DarkRedDefaultString $FGDarkRed
 
     # 12. DarkYellow (System Warning) - MOVED DOWN
     # EDITED: "   ⚠  WARNING" (3 spaces)
     $DarkYellowDefaultString = "   $Char_Warn  WARNING"
-    Write-Row "DarkYellow" "\e[33m" "System" "Output" $DarkYellowDefaultString $FGDarkYellow
+    # UPDATED: About column "  System " -> 2 spaces lead, 1 space trail
+    $DarkYellowAbout = "${FGWhite}${BGDarkYellow}  System ${Reset}"
+    Write-Row "DarkYellow" "\e[33m" $DarkYellowAbout "Output" $DarkYellowDefaultString $FGDarkYellow
 
     # EDITED: Add Fg DarkGray LIGHT LINE boundary line just below the 'DarkYellow' line (Mockup Prompt Top)
     Write-Output "$FGDarkGray$([string]$Char_LightLine * 60)$Reset"
@@ -327,8 +370,9 @@ if ($ShowRules) {
     # EDITED: "Show rules" to "EXPAND" (Yellow on Default Bg)
     # EDITED: "⌨" and "[Enter]" to White Foreground ($FGWhite)
     # EDITED: "[Enter]" to Black Text on Yellow Background ($FGBlack$BGYellow)
-    # EDITED: "key" to DarkCyan ($FGDarkCyan) on Default Bg
-    $PromptStr = "${FGWhite}$Char_Keyboard  ${FGDarkCyan}Press ${FGYellow}$Char_Finger${Reset} ${FGBlack}${BGYellow}[Enter]${Reset}${FGDarkCyan} to ${FGYellow}EXPAND${FGDarkCyan} ${FGGray}|${FGDarkCyan} or ${FGDarkCyan}any other ${FGDarkCyan}key${Reset}${FGDarkCyan} to ${FGGray}Close${Reset}"
+    # EDITED: "key" to Gray ($FGGray) on Default Bg
+    # UPDATED: Changed all previously DarkCyan parts to Gray
+    $PromptStr = "${FGWhite}$Char_Keyboard  ${FGGray}Press ${FGYellow}$Char_Finger${Reset} ${FGBlack}${BGYellow}[Enter]${Reset}${FGGray} to ${FGYellow}EXPAND${FGGray} ${FGGray}|${FGGray} or ${FGGray}any other ${FGGray}key${Reset}${FGGray} to ${FGGray}Close${Reset}"
 
     # Calculate centering padding
     # Calculate visible length of text without ANSI codes for centering
