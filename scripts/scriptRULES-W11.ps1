@@ -16,7 +16,7 @@
 
 .NOTES
     Author: PatchW11 Team
-    Version: 8.70 (Consistency Update)
+    Version: 8.74 (Final Alignment Consistency)
     Repository: https://github.com/KeithOwns/PatchW11
 #>
 
@@ -93,9 +93,10 @@ function Write-Row {
 
     # Column Width Configuration
     $Width_TextColor   = 11
-    # EDITED: Reduced ANSI width from 8 to 7 to shift following columns left
+    # EDITED: Reduced ANSI width to 7 to match Header (ANSI:4 + Pad:3)
     $Width_ANSI        = 7  
-    $Width_About       = 9  
+    # EDITED: Changed Width_About from 9 to 8 to match the 8-character string length
+    $Width_About       = 8  
     $Width_Where       = 8  
     
     # Apply dynamic color to TextColor and pad the result (11 characters) - RIGHT ALIGNED
@@ -103,13 +104,12 @@ function Write-Row {
     
     $ANSIPadded   = $ANSI.PadRight($Width_ANSI)
     # Note: AboutPadded logic here assumes visible length. Since we pass full ANSI strings, 
-    # PadLeft won't add spaces if length > 9. We handle padding INSIDE the input strings.
+    # PadLeft won't add spaces if length matches $Width_About.
     $AboutPadded  = $About.PadLeft($Width_About) 
     $WherePadded  = $Where.PadRight($Width_Where) # LEFT ALIGNED
     
     # Assemble the output line (5 columns + spacing for DefaultString)
     # Added a space between $AboutPadded and $WherePadded to prevent merging (e.g. "ScriptHdr")
-    # EDITED: Reduced to 1 space to align with Header (which was shifted left in 8.67)
     $OutputLine = " ${ColorCode}${CNameUncoloredPadded}${Reset} $ANSIPadded$AboutPadded $WherePadded${ColorCode}$DefaultString${Reset}"
     
     Write-Host $OutputLine
@@ -171,11 +171,11 @@ function Show-VisualExamples {
     
     # EDITED: ANSI Header split to ensure padding spaces are Default color (not Gray)
     $Header_ANSI_Text = "ANSI"
-    # EDITED: Reduced padding to 4 spaces (Shift Left)
-    $Header_ANSI_Pad  = " " * 4 
+    # EDITED: Reduced padding to 3 spaces to align header text with data text
+    $Header_ANSI_Pad  = " " * 3
 
-    # EDITED: "  About " (shifted text right by 1 space inside block)
-    $Header_About     = "${FGBlack}${BGWhite}  About ${Reset}" 
+    # EDITED: " About  " (8 characters)
+    $Header_About     = "${FGBlack}${BGWhite} About  ${Reset}" 
     # EDITED: Changed PadRight from 9 to 8 to match data column width reduction
     $Header_Where     = "Where".PadRight(8)  # LEFT ALIGNED
 
@@ -187,9 +187,6 @@ function Show-VisualExamples {
     
     # 1 Space leading indentation (matches Write-Row prefix)
     # Added space between Header_About and Header_Where to match Write-Row logic
-    # Re-added ${FGGray} after Header_About to ensure subsequent text remains gray
-    # NEW EDIT: Removed one extra space between $Header_ANSI_Pad and $Header_About as requested
-    # EDITED: Reduced to 1 space between Header_About and Header_Where (shifted left)
     Write-Output " ${FGGray}$Header_TextColor ${FGGray}$Header_ANSI_Text${Reset}$Header_ANSI_Pad$Header_About ${FGGray}$Header_Where$Header_DefaultString$Reset"
 
     # Table Separator (White/DarkGray, Indented, 60 chars) - UPDATED TO OVERLINE
@@ -205,16 +202,15 @@ function Show-VisualExamples {
     # 1. Cyan (Header Title)
     # UPDATED: Centered over 20-char lines (4 spaces padding)
     $CyanDefaultString = "    $Char_HeavyLine PatchW11 $Char_HeavyLine"
-    # UPDATED: About column "  Script " -> 2 spaces lead, 1 space trail
-    $CyanAbout = "${FGBlack}${BGCyan}  Script ${Reset}"
+    # UPDATED: About column " Script " -> 8 characters
+    $CyanAbout = "${FGBlack}${BGCyan} Script ${Reset}"
     Write-Row "Cyan"       "\e[96m" $CyanAbout "Hdr/Ftr" $CyanDefaultString $FGCyan
     
     # 2. DarkBlue (Header Boundary)
     # UPDATED: 20 Heavy Lines (0 spaces)
     $DarkBlueDefaultString = "$([string]$Char_HeavyLine * 20)"
-    # UPDATED: About column "  Script " -> 2 spaces lead, 1 space trail
-    # EDITED: Matches Cyan pattern
-    $DarkBlueAbout = "${FGBlack}${BGDarkBlue}  Script ${Reset}"
+    # UPDATED: About column " Script " -> 8 characters
+    $DarkBlueAbout = "${FGBlack}${BGDarkBlue} Script ${Reset}"
     Write-Row "DarkBlue"   "\e[34m" $DarkBlueAbout "Lines" $DarkBlueDefaultString $FGDarkBlue
 
     # 3. DarkCyan (Output Text)
@@ -223,71 +219,65 @@ function Show-VisualExamples {
     # 4. Green (SCRIPT Success) - MOVED UP
     # EDITED: "   ✅ Success!" (3 spaces)
     $GreenDefaultString = "   $Char_HeavyCheck Success!"
-    # UPDATED: About column "  Script " -> 2 spaces lead, 1 space trail
-    $GreenAbout = "${FGBlack}${BGGreen}  Script ${Reset}"
+    # UPDATED: About column " Script " -> 8 characters
+    $GreenAbout = "${FGBlack}${BGGreen} Script ${Reset}"
     Write-Row "Green"      "\e[92m" $GreenAbout "Output" $GreenDefaultString $FGGreen
 
     # 5. Red (SCRIPT Failure) - MOVED UP
     # EDITED: "   ❎ Failure!" (3 spaces)
     $RedDefaultString = "   $Char_RedCross Failure!"
-    # UPDATED: About column "  Script " -> 2 spaces lead, 1 space trail
-    $RedAbout = "${FGBlack}${BGRed}  Script ${Reset}"
+    # UPDATED: About column " Script " -> 8 characters
+    $RedAbout = "${FGBlack}${BGRed} Script ${Reset}"
     Write-Row "Red"        "\e[91m" $RedAbout "Output" $RedDefaultString $FGRed
     
     # 6. Yellow (Input Keypress) - MOVED UP
     # EDITED: "    ☛ [Key]" (4 spaces)
     $YellowDefaultString = "Yellow \e[93m  script    ☛ [Key]"
     $YellowContent = "    $Char_Finger ${FGBlack}${BGYellow}[Key]${Reset}"
-    # UPDATED: About column "  Script " -> 2 spaces lead, 1 space trail
-    $YellowAbout = "${FGBlack}${BGYellow}  Script ${Reset}"
+    # UPDATED: About column " Script " -> 8 characters
+    $YellowAbout = "${FGBlack}${BGYellow} Script ${Reset}"
     Write-Row "Yellow"     "\e[93m" $YellowAbout "Input" $YellowContent $FGYellow
     
     # 7. White (Body Title) - MOVED DOWN
     # UPDATED: Centered in 14-char col "      ➖" (6 spaces padding)
-    # CLEANUP: Changed "Bold  " to "Bold" to fix alignment (PadLeft pushes pure text to right)
     $WhiteContent = "      $Char_HeavyMinus" 
-    # UPDATED: Added one space trailing to match visual width of 9 chars
-    # Previous: "   ${FGWhite}BOLD ${Reset}" (Width 8)
-    # New: "   ${FGWhite}BOLD  ${Reset}" (Width 9)
-    $WhiteAbout = "   ${FGWhite}BOLD  ${Reset}"
+    # UPDATED: Removed one far left space to match 8 characters
+    $WhiteAbout = "  ${FGWhite}BOLD  ${Reset}"
     Write-Row "White"      "\e[97m" $WhiteAbout "Body" $WhiteContent $FGWhite
     
     # 8. Gray (Body Text) - MOVED DOWN
     # UPDATED: "      -" (6 spaces)
     $GrayContent = "      $Char_Hyphen"
-    # UPDATED: Added one space trailing to match visual width of 9 chars
-    # Previous: "${FGGray} regular${Reset}" (Width 8)
-    # New: "${FGGray} regular ${Reset}" (Width 9)
-    $GrayAbout = "${FGGray} regular ${Reset}"
+    # UPDATED: Removed one far left space to match 8 characters
+    $GrayAbout = "${FGGray}regular ${Reset}"
     Write-Row "Gray"       "\e[37m" $GrayAbout "Body" $GrayContent $FGGray
 
     # 9. DarkGray (Body Boundary) - MOVED DOWN
     # UPDATED: 20 Light Lines (0 spaces)
     $DarkGrayDefaultString = "$([string]$Char_LightLine * 20)"
-    # UPDATED: About column "  System " -> 2 spaces lead, 1 space trail
-    # Fg White for "System" as requested.
-    $DarkGrayAbout = "${FGWhite}${BGDarkGray}  System ${Reset}"
+    # UPDATED: About column " System " -> 8 characters
+    $DarkGrayAbout = "${FGWhite}${BGDarkGray} System ${Reset}"
     Write-Row "DarkGray"   "\e[90m" $DarkGrayAbout "Lines" $DarkGrayDefaultString $FGDarkGray
     
     # 10. DarkGreen (System Enabled) - MOVED DOWN
     # EDITED: "   ☑  ENABLED" (3 spaces)
     $DarkGreenDefaultString = "   $Char_BallotCheck  ENABLED"
-    # UPDATED: About column "  System " -> 2 spaces lead, 1 space trail
-    $DarkGreenAbout = "${FGWhite}${BGDarkGreen}  System ${Reset}"
+    # UPDATED: About column " System " -> 8 characters
+    $DarkGreenAbout = "${FGWhite}${BGDarkGreen} System ${Reset}"
     Write-Row "DarkGreen"  "\e[32m" $DarkGreenAbout "Output" $DarkGreenDefaultString $FGDarkGreen
 
     # 11. DarkRed (System Disabled) - MOVED DOWN
     # EDITED: "   ❎ DISABLED" (3 spaces)
     $DarkRedDefaultString = "   ${FGDarkRed}$Char_RedCross DISABLED${Reset}"
-    # UPDATED: About column "  System " -> 2 spaces lead, 1 space trail
-    $DarkRedAbout = "${FGWhite}${BGDarkRed}  System ${Reset}"
+    # UPDATED: About column " System " -> 8 characters
+    $DarkRedAbout = "${FGWhite}${BGDarkRed} System ${Reset}"
     Write-Row "DarkRed"    "\e[31m" $DarkRedAbout "Output" $DarkRedDefaultString $FGDarkRed
 
     # 12. DarkYellow (System Warning) - MOVED DOWN
     # EDITED: "   ⚠  WARNING" (3 spaces)
     $DarkYellowDefaultString = "   $Char_Warn  WARNING"
-    # UPDATED: About column "  System " -> 2 spaces lead, 1 space trail
-    $DarkYellowAbout = "${FGWhite}${BGDarkYellow}  System ${Reset}"
+    # UPDATED: About column " System " -> 8 characters
+    $DarkYellowAbout = "${FGWhite}${BGDarkYellow} System ${Reset}"
     Write-Row "DarkYellow" "\e[33m" $DarkYellowAbout "Output" $DarkYellowDefaultString $FGDarkYellow
 
     # EDITED: Add Fg DarkGray LIGHT LINE boundary line just below the 'DarkYellow' line (Mockup Prompt Top)
@@ -304,40 +294,23 @@ function Show-VisualExamples {
     if ($ShowFormattingRules) {
         
         # Script Output DEFAULTS Title (Center-aligned)
-        # FIX: Applying FGCyan to the en dashes as requested by the user.
-        # EDITED: "Script Output DEFAULTS" to "Script Output FORMATTING"
         $DefaultsTitle = "${FGCyan}$Char_EnDash Script Output FORMATTING $Char_EnDash$Reset"
-        $DefaultsTitleLength = 26 # Adjusted length for visual centering of the text part
-        $LegendTitlePadding = [Math]::Floor((60 - 28) / 2) # Adjusted padding
+        $LegendTitlePadding = [Math]::Floor((60 - 28) / 2)
         Write-Output (" " * $LegendTitlePadding + $DefaultsTitle)
         
         # Rules Text in DarkCyan - UPDATED BASED ON USER REQUEST
-        # EDITED: All text in Formatting section to Fg Gray, EXCEPT "A. Text Formatting:" which is White.
         Write-Output ""
         Write-Output "  ${FGWhite}A. Text Formatting:$Reset"
         Write-Output "     ${FGGray}1. Never split whole words over multiple lines.$Reset"
-        # EDITED: Combined Rule 2 and 3
         Write-Output "     ${FGGray}2. Default alignment: Center-align$Reset"
-        # EDITED: Deleted old rule 3 placeholder
-        # EDITED: Combined Rule 4 and 5
         Write-Output "     ${FGGray}3. Body Alignment: Left-align; 2 space indentation$Reset"
-        # Renumbered subsequent rules
         Write-Output "     ${FGGray}4. Boundaries composed of (`"$Char_EmDash`" * 60)$Reset"
         Write-Output "     ${FGGray}5. Optimize output for window 60 characters in length$Reset"
-        # Rules A.7 and A.8 renumbered to A.8 and A.9 respectively.
-        # FIX: Correcting Fg/Bg of the parenthesis in Rule A.8
-        # REWRITTEN RULE 6 per user request
-        # REWRITTEN AGAIN to prevent mid-word wrapping and ensure it makes sense
-        # "Highlight" was split before. Moving it to the next line.
-        # Line 1: "6. Structured Status Display (Write-FlexLine):"
-        # Line 2: "    Highlight positive status states (Active/On) using"
-        # Line 3: "    a background color (e.g., $BGDarkGreen)."
         
         Write-Output "     ${FGGray}6. Structured Status Display (Write-FlexLine):$Reset"
         Write-Output "         ${FGGray}Highlight positive status states (Active/On) using$Reset"
         Write-Output "         ${FGGray}a background color (e.g., `$BGDarkGreen).$Reset"
         
-        # BUG FIX: Changed \$FGGray to `$FGGray to properly display the variable name text
         Write-Output "     ${FGGray}7. Always use ${FGGray}`$FGGray${FGGray} for informational text that is $Reset"
         Write-Output "         ${FGGray}not a status or title.$Reset"
         
@@ -365,23 +338,11 @@ if ($ShowRules) {
     Show-VisualExamples -ShowFormattingRules $false
 
     # 2. Prompt (MATCHED TO 02 SCRIPT STYLING)
-    # "⌨  Press ☛ [Enter] to EXPAND | or any other key to Close"
-    
-    # EDITED: "Show rules" to "EXPAND" (Yellow on Default Bg)
-    # EDITED: "⌨" and "[Enter]" to White Foreground ($FGWhite)
-    # EDITED: "[Enter]" to Black Text on Yellow Background ($FGBlack$BGYellow)
-    # EDITED: "key" to Gray ($FGGray) on Default Bg
-    # UPDATED: Changed all previously DarkCyan parts to Gray
     $PromptStr = "${FGWhite}$Char_Keyboard  ${FGGray}Press ${FGYellow}$Char_Finger${Reset} ${FGBlack}${BGYellow}[Enter]${Reset}${FGGray} to ${FGYellow}EXPAND${FGGray} ${FGGray}|${FGGray} or ${FGGray}any other ${FGGray}key${Reset}${FGGray} to ${FGGray}Close${Reset}"
 
-    # Calculate centering padding
     # Calculate visible length of text without ANSI codes for centering
     $VisibleText = "$Char_Keyboard  Press $Char_Finger [Enter] to EXPAND | or any other key to Close"
-    
-    # ERROR FIX: Added [Math]::Max(0, ...) to ensure padding is never negative
     $PromptPadding = [Math]::Max(0, [Math]::Floor((60 - $VisibleText.Length) / 2))
-
-    # Save cursor position before printing prompt to allow clearing later if needed
     $PromptCursorTop = [Console]::CursorTop
     
     Write-Output (" " * $PromptPadding + $PromptStr)
@@ -411,28 +372,13 @@ if ($ShowRules) {
         Write-Host (" " * $FooterPadding + $FooterText) -ForegroundColor Cyan
     } else {
         # User pressed any other key to Close/Exit
-        
-        # Move cursor back to the start of the prompt line
         try {
-            # Clear Prompt line (PromptCursorTop)
             [Console]::SetCursorPosition(0, $PromptCursorTop)
             Write-Output (" " * 80)
-            
-            # Clear Separator line (next line)
             [Console]::SetCursorPosition(0, $PromptCursorTop + 1)
             Write-Output (" " * 80)
-            
-            # Leave the Copyright lines (Top+2, Top+3) ALONE.
-            # We specifically want to clear prompt/boundary but keep footer.
-            
-            # Reset cursor position to PromptCursorTop so script exits cleanly without text overlap
-            # Actually, typically you want the cursor BELOW the footer on exit.
-            # Footer is at Top+3. So set cursor to Top+4.
             [Console]::SetCursorPosition(0, $PromptCursorTop + 4)
-            
-        } catch {
-            # Fallback if console manipulation fails (e.g. ISE)
-        }
+        } catch {}
     }
 }
 
