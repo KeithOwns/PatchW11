@@ -9,7 +9,7 @@
     STRICTLY MATCHED TO scriptRULES-W11.ps1 STANDARDS.
     - Header: Cyan 'PatchW11' / DarkCyan Subtitle / DarkBlue Boundary
     - Body: Left-Aligned, 1 Space Indent
-    - Icons: System Enabled (DarkGreen Ballot), System Disabled (DarkRed XSquare 0x26DD)
+    - Icons: System Enabled (DarkGreen Ballot), System Disabled (DarkRed XSquare 0x274E)
     - Boundaries: Body (DarkGray), Header/Footer (DarkBlue)
     - Footer: Copyright 2025, All Rights Reserved (Cyan)
     - Colors: Body Text (Gray), Header Icons (White), Output Text (DarkCyan)
@@ -42,7 +42,7 @@ $ErrorActionPreference = 'Continue'
 $Char_EmDash      = [char]0x2014 # —
 $Char_EnDash      = [char]0x2013 # –
 $Char_BallotCheck = [char]0x2611 # ☑ - Used for DarkGreen Enabled
-# EDITED: Changed from 0x26DD (⛝) to 0x274E (❎) per request "Change all ⛝ to ❎"
+# EDITED: Updated to 0x274E (❎) per user request
 $Char_XSquare     = [char]0x274E # ❎ - Used for DarkRed Disabled
 $Char_Warn        = [char]0x26A0 # ⚠ - Used for DarkYellow Warning
 $Char_Radioactive = [char]0x2622 # ☢ - Used for Critical Warnings
