@@ -1,4 +1,4 @@
-﻿#Requires -RunAsAdministrator
+#Requires -RunAsAdministrator
 param([switch]$AutoRun)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
