@@ -25,7 +25,6 @@ $FGDarkGreen  = "$Esc[32m"
 $FGGreen      = "$Esc[92m"
 $FGDarkRed    = "$Esc[31m"
 $FGRed        = "$Esc[91m"
-$FGDarkYellow = "$Esc[33m"
 $FGYellow     = "$Esc[93m"
 $FGDarkMagenta= "$Esc[35m"
 $FGBlack      = "$Esc[30m"
@@ -48,7 +47,7 @@ $Char_BallotCheck = [char]0x2611
 $Char_HeavyCheck  = [char]0x2705
 $Char_XSquare     = [char]0x26DD
 $Char_RedCross    = [char]0x274E
-$Char_Warn        = [char]0x26A0
+$Char_Warn        = [char]0x26D2
 $Char_Finger      = [char]0x261B
 $Char_Keyboard    = [char]0x2328
 $Char_Skip        = [char]0x23ED
@@ -59,6 +58,9 @@ $Char_BlackCircle = [char]0x26AB
 $Char_Gear        = [char]0x2699
 $Char_Bell        = [char]::ConvertFromUtf32(0x1F514)
 $Char_Stopwatch   = [char]::ConvertFromUtf32(0x23F1)
+$Char_Timer       = [char]::ConvertFromUtf32(0x23F2)
+$Char_Alarm       = [char]::ConvertFromUtf32(0x23F0) # Added Alarm Clock
+$Char_FastForward = [char]::ConvertFromUtf32(0x23E9)
 $Char_User        = [char]::ConvertFromUtf32(0x1F464)
 
 # Global Logging Variables
@@ -89,15 +91,25 @@ function Write-FlexLine {
         [string]$ActiveColor = "$BGDarkGreen"
     )
     
-    $LeftDisplay = "$FGGray$LeftIcon $FGGray$LeftText$Reset"
+    if ($IsActive) {
+        $LeftDisplay = "$FGGray$LeftIcon $FGGray$LeftText$Reset"
+    } else {
+        $LeftDisplay = "$FGDarkGray$LeftIcon $FGDarkGray$LeftText$Reset"
+    }
+
     $LeftRaw = "$LeftIcon $LeftText"
     
     if ($IsActive) {
-        $RightDisplay = "$ActiveColor   $Reset$BGDarkGray$FGGray$RightText$Reset "
-        $RightRaw = "   $RightText " 
+        # Modified logic: 
+        # 1. Background color applies to the spaces + circle ("  ⚫")
+        # 2. Reset color
+        # 3. Print text ("On") with default background
+        # 4. Added 2 spaces padding on the right as requested
+        $RightDisplay = "$ActiveColor  $Char_BlackCircle$Reset$FGGray$RightText$Reset  "
+        $RightRaw = "  $Char_BlackCircle$RightText  " 
     } else {
-        $RightDisplay = "$FGDarkRed$Char_RedCross $FGGray Off$Reset"
-        $RightRaw = "$Char_RedCross  Off"
+        $RightDisplay = "$BGDarkGray$FGBlack$Char_BlackCircle  $Reset${FGDarkGray}Off$Reset "
+        $RightRaw = "$Char_BlackCircle  Off "
     }
 
     $SpaceCount = $Width - ($LeftRaw.Length + $RightRaw.Length + 3) - 1
@@ -128,6 +140,57 @@ function Get-StatusLine {
     param([bool]$IsEnabled, [string]$Text)
     if ($IsEnabled) { return "$FGDarkGreen$Char_BallotCheck  $FGGray$Text$Reset" } 
     else { return "$FGDarkRed$Char_RedCross $FGGray$Text$Reset" }
+}
+
+function Invoke-UserInteractionPrompt {
+    Write-Host ""
+    $prompt = "${FGWhite}$Char_Keyboard  Press${FGDarkGray} ${FGYellow}$Char_Finger [Enter]${FGDarkGray} ${FGWhite}to${FGDarkGray} ${FGYellow}RUN Checks${FGWhite}|${FGDarkGray}any other to ${FGWhite}SKIP$Char_Skip ${Reset}"
+
+    # Capture cursor position for UI cleanup
+    $PromptCursorTop = [Console]::CursorTop
+
+    Write-Centered $prompt
+
+    # --- Timeout Logic ---
+    $timeout = 10
+    $startTime = Get-Date
+    $key = $null
+
+    while ((Get-Date) -lt $startTime.AddSeconds($timeout)) {
+        if ($Host.UI.RawUI.KeyAvailable) {
+            $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+            break
+        }
+        Start-Sleep -Milliseconds 100
+    }
+
+    if ($key -eq $null) {
+        # Default to Enter (VirtualKeyCode 13)
+        $key = [PSCustomObject]@{ VirtualKeyCode = 13 }
+        Write-Host ""
+        Write-LeftAligned "$FGYellow Timeout: Defaulting to RUN Checks...$Reset"
+        Start-Sleep -Seconds 1
+    }
+    # ---------------------
+
+    # --- UI Cleanup: Clear Prompt ---
+    try {
+        Start-Sleep -Milliseconds 200 # Slight delay for UX
+        $CurrentTop = [Console]::CursorTop
+        # Overwrite prompt lines with spaces
+        for ($i = $PromptCursorTop; $i -le $CurrentTop; $i++) {
+            [Console]::SetCursorPosition(0, $i)
+            Write-Host (" " * 80) -NoNewline
+        }
+        # Reset cursor to start of prompt
+        [Console]::SetCursorPosition(0, $PromptCursorTop)
+    } catch {
+        # Fallback if console manipulation fails
+        Write-Host ""
+    }
+    # --------------------------------
+
+    return ($key.VirtualKeyCode -eq 13)
 }
 
 # --- Logging & Registry Functions ---
@@ -182,7 +245,7 @@ function Show-WUStatus {
     Write-Host " $Bold$FGWhite Windows Update$Reset"
     
     $status_WindowsUpdate = "Updates available"
-    $status_Color = $FGDarkYellow
+    $status_Color = $FGDarkMagenta
     $status_Icon = $Char_Warn
     $LastSearchStr = "Unknown"
     
@@ -230,8 +293,8 @@ function Show-WUStatus {
     
     # --- CHANGED: Updates Available Logic ---
     if ($status_WindowsUpdate -eq "Updates available") {
-        # Updates found: Print in DarkYellow and HIDE 'Last checked'
-        Write-LeftAligned "$FGDarkYellow$Char_Warn $FGDarkYellow$status_WindowsUpdate$Reset"
+        # Updates found: Print in Magenta and HIDE 'Last checked'
+        Write-LeftAligned "$FGDarkMagenta$Char_Warn $FGDarkMagenta$status_WindowsUpdate$Reset"
     }
     else {
         # Updates NOT found (or check failed): Use standard logic + 'Last checked'
@@ -247,7 +310,7 @@ function Show-WUStatus {
     
     $continuous = Get-RegistryValue -Path $WU_UX -Name "IsContinuousInnovationOptedIn"
     
-    Write-FlexLine -LeftIcon $Char_Speaker -LeftText "Get latest updates as soon as possible" -RightText "On" -IsActive ($continuous -eq 1) -ActiveColor $BGDarkGreen
+    Write-FlexLine -LeftIcon $Char_Speaker -LeftText "Get latest updates ASAP" -RightText "On" -IsActive ($continuous -eq 1) -ActiveColor $BGDarkGreen
 
     Write-Host ""
     Write-LeftAligned "$Bold$FGWhite$Char_Gear  Advanced options $Reset"
@@ -255,16 +318,37 @@ function Show-WUStatus {
     $mu = Get-RegistryValue -Path $WU_UX  -Name "AllowMUUpdateService"
     Write-FlexLine -LeftIcon $Char_Loop -LeftText "Receive updates for other Microsoft products" -RightText "On" -IsActive ($mu -eq 1)
 
+    # Added -Width 59 to shift the RightText one space to the left
+    $expedited = Get-RegistryValue -Path $WU_UX -Name "IsExpedited"
+    Write-FlexLine -LeftIcon $Char_FastForward -LeftText "Get me up to date: Restart ASAP" -RightText "On" -IsActive ($expedited -eq 1) -Width 59
+
+    $metered = Get-RegistryValue -Path $WU_UX -Name "AllowAutoWindowsUpdateDownloadOverMeteredNetwork"
+    # Updated Icon: > becomes $Char_Timer (⏲)
+    # Added leading space to LeftText to align 'D' in Download with 'G' in Get above
+    Write-FlexLine -LeftIcon $Char_Timer -LeftText " Download updates over metered connections" -RightText "On" -IsActive ($metered -eq 1)
+
+    # Moved here:
     $restartNotify = Get-RegistryValue -Path $WU_UX -Name "RestartNotificationsAllowed2"
     Write-FlexLine -LeftIcon $Char_Bell -LeftText "Notify me when a restart is required" -RightText "On" -IsActive ($restartNotify -eq 1)
 
     $ahs = Get-RegistryValue -Path $WU_UX -Name "ActiveHoursStart"
     $ahe = Get-RegistryValue -Path $WU_UX -Name "ActiveHoursEnd"
+    
+    $TimeText = "Auto"
     if ($ahs -ne $null -and $ahe -ne $null) {
-        Write-LeftAligned "$FGGray$Char_Stopwatch $FGGray Active hours: ${ahs}:00 - ${ahe}:00$Reset" -Indent 3
-    } else {
-        Write-LeftAligned "$FGGray$Char_Stopwatch $FGGray Active hours: Auto$Reset" -Indent 3
+        $dateStart = (Get-Date).Date.AddHours($ahs)
+        $dateEnd = (Get-Date).Date.AddHours($ahe)
+        $TimeText = "Currently " + $dateStart.ToString("h:mm tt") + " to " + $dateEnd.ToString("h:mm tt")
     }
+
+    # Modified alignment: 
+    # Reduced padding to exactly 2 spaces as requested.
+    # Updated Icon: $Char_Timer becomes $Char_Alarm (⏰)
+    
+    Write-Host (" " * 3) -NoNewline
+    Write-Host "$FGGray$Char_Alarm Active hours:$Reset" -NoNewline
+    Write-Host (" " * 2) -NoNewline
+    Write-Host "$Reset$TimeText$Reset"
     
     Write-Host ""
     Write-LeftAligned "$Bold$FGWhite$Char_User Accounts >  Sign-in options$Reset"
@@ -340,7 +424,7 @@ function Invoke-COMUpdateCheck {
             Write-LeftAligned "$FGGreen$Char_HeavyCheck System is up to date.$Reset"
             Write-Log -Message "COM Search: No updates found" -Level SUCCESS
         } else {
-            Write-LeftAligned "$FGDarkYellow$Char_Warn Updates available: $PendingUpdates$Reset"
+            Write-LeftAligned "$FGDarkMagenta$Char_Warn Updates available: $PendingUpdates$Reset"
             Write-Log -Message "COM Search: $PendingUpdates updates found" -Level INFO
             
             Write-Host ""
@@ -374,7 +458,7 @@ function Invoke-WingetUpdateCheck {
         
         Write-LeftAligned "$FGGreen$Char_HeavyCheck Winget update command completed.$Reset"
     } else {
-        Write-LeftAligned "$FGDarkYellow$Char_Warn Winget not found. Skipping.$Reset"
+        Write-LeftAligned "$FGDarkMagenta$Char_Warn Winget not found. Skipping.$Reset"
     }
 }
 
@@ -437,7 +521,7 @@ function Invoke-MSStoreUpdateCheck {
     }
     
     if (-not $buttonFound) {
-        Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find update button$Reset"
+        Write-LeftAligned "$FGDarkMagenta$Char_Warn Could not find update button$Reset"
         Write-Log -Message "Could not find update button in Store" -Level WARNING
     }
     
@@ -505,7 +589,7 @@ function Invoke-WinUpdateCheck {
     }
     
     if (-not $buttonFound) {
-            Write-LeftAligned "$FGDarkYellow$Char_Warn Could not find update buttons$Reset"
+            Write-LeftAligned "$FGDarkMagenta$Char_Warn Could not find update buttons$Reset"
             Write-Log -Message "Could not find update buttons in Settings" -Level WARNING
     }
     
@@ -530,34 +614,7 @@ if ($AutoRun) {
     Invoke-MSStoreUpdateCheck
     Invoke-WinUpdateCheck
 } else {
-    Write-Host ""
-    $prompt = "${FGWhite}$Char_Keyboard  Press${FGDarkGray} ${FGYellow}$Char_Finger [Enter]${FGDarkGray} ${FGWhite}to${FGDarkGray} ${FGYellow}RUN Checks${FGWhite}|${FGDarkGray}any other to ${FGWhite}SKIP$Char_Skip ${Reset}"
-
-    # Capture cursor position for UI cleanup
-    $PromptCursorTop = [Console]::CursorTop
-
-    Write-Centered $prompt
-
-    $key = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-
-    # --- UI Cleanup: Clear Prompt ---
-    try {
-        Start-Sleep -Milliseconds 200 # Slight delay for UX
-        $CurrentTop = [Console]::CursorTop
-        # Overwrite prompt lines with spaces
-        for ($i = $PromptCursorTop; $i -le $CurrentTop; $i++) {
-            [Console]::SetCursorPosition(0, $i)
-            Write-Host (" " * 80) -NoNewline
-        }
-        # Reset cursor to start of prompt
-        [Console]::SetCursorPosition(0, $PromptCursorTop)
-    } catch {
-        # Fallback if console manipulation fails
-        Write-Host ""
-    }
-    # --------------------------------
-
-    if ($key.VirtualKeyCode -eq 13) {
+    if (Invoke-UserInteractionPrompt) {
         Invoke-COMUpdateCheck
         Invoke-WingetUpdateCheck
         Invoke-MSStoreUpdateCheck
