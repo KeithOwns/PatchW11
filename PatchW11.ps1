@@ -282,7 +282,6 @@ Microsoft Update Service ${FGDarkGray}|${Reset} ${FGBlue}Configure${Reset}${FGDa
 Restart Notifications    ${FGDarkGray}|${Reset} ${FGBlue}Configure${Reset}${FGDarkGray}|${Reset} ${FGGray}wa.ps1 (Embedded)${Reset}
 App Restart Persistence  ${FGDarkGray}|${Reset} ${FGBlue}Configure${Reset}${FGDarkGray}|${Reset} ${FGGray}wa.ps1 (Embedded)${Reset}
 Get Updates              ${FGDarkGray}|${Reset} ${FGDarkBlue}Maintain${Reset} ${FGDarkGray}|${Reset} ${FGGray}wa.ps1 (Embedded)${Reset}
-WinGet App Updates       ${FGDarkGray}|${Reset} ${FGDarkBlue}Maintain${Reset} ${FGDarkGray}|${Reset} ${FGGray}wa.ps1 (Embedded)${Reset}
 Drive Optimization       ${FGDarkGray}|${Reset} ${FGDarkBlue}Maintain${Reset} ${FGDarkGray}|${Reset} ${FGGray}wa.ps1 (Embedded)${Reset}
 Temp File Cleanup        ${FGDarkGray}|${Reset} ${FGDarkBlue}Maintain${Reset} ${FGDarkGray}|${Reset} ${FGGray}wa.ps1 (Embedded)${Reset}
 SFC / DISM Repair        ${FGDarkGray}|${Reset} ${FGDarkBlue}Maintain${Reset} ${FGDarkGray}|${Reset} ${FGGray}wa.ps1 (Embedded)${Reset}
@@ -317,7 +316,6 @@ Microsoft Update Service,Configure,wa.ps1 (Embedded),Registry (HKLM),HKLM:\SOFTW
 Restart Notifications,Configure,wa.ps1 (Embedded),Registry (HKLM),HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings\RestartNotificationsAllowed2 (1),Yes,No,Config,Invoke-WA_SetRestartIsReq
 App Restart Persistence,Configure,wa.ps1 (Embedded),Registry (HKCU),HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\RestartApps (1),Yes,No,Config,Invoke-WA_SetRestartApps
 Get Updates,Maintain,wa.ps1 (Embedded),UI Automation,Automates Windows Update Settings and MS Store updates,No,No,Maintenance,Invoke-WA_WindowsUpdate
-WinGet App Updates,Maintain,wa.ps1 (Embedded),Command Line,Checks for and updates all apps via WinGet,No,No,Maintenance,Invoke-WA_WindowsUpdate
 Drive Optimization,Maintain,wa.ps1 (Embedded),PowerShell Cmdlt,Optimize-Volume for all fixed disks (SSD=Trim; HDD=Defrag),No,No,Maintenance,Invoke-WA_OptimizeDisks
 Temp File Cleanup,Maintain,wa.ps1 (Embedded),File System,Clears Windows Temp and User Temp,No,No,Maintenance,Invoke-WA_SystemCleanup
 SFC / DISM Repair,Maintain,wa.ps1 (Embedded),Command Line,Runs SFC scan; if corruption found runs DISM image repair,No,No,Maintenance,Invoke-WA_WindowsRepair
@@ -2264,61 +2262,6 @@ function Invoke-WA_SetRestartApps {
 
 # --- EMBEDDED ATOMIC SCRIPTS (Maintenance Part 4) ---
 
-function Invoke-WA_WingetUpgrade {
-    <#
-.SYNOPSIS
-    WinGet Application Updater.
-.DESCRIPTION
-    Updates all installed applications using Windows Package Manager (winget).
-    Standalone version. Includes Reverse Mode (-r) stub.
-.PARAMETER Reverse
-    (Alias: -r) No-Op. Upgrades cannot be reversed automatically.
-#>
-    param(
-        [Parameter(Mandatory = $false)]
-        [Alias('r')]
-        [switch]$Reverse,
-        [switch]$Undo
-    )
-    Write-Header "WINGET APP UPDATE"
-
-    if ($Reverse) {
-        Write-LeftAligned "$FGYellow$Char_Warn Reverse Mode: App upgrades cannot be reversed automatically.$Reset"
-        Write-Host ""
-        $copyright = "Copyright (c) 2026 WinAuto"; $cPad = [Math]::Floor((60 - $copyright.Length) / 2); Write-Host (" " * $cPad + "$FGCyan$copyright$Reset"); Write-Host ""
-        return
-    }
-
-    # Check for WinGet
-    if (-not (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
-        Write-LeftAligned "$FGRed$Char_Warn WinGet is not installed or not in PATH.$Reset"
-        Write-LeftAligned "Please install App Installer from the Microsoft Store."
-        return
-    }
-
-    Write-LeftAligned "$FGGray Running winget upgrade --all...$Reset"
-    Write-Host ""
-
-    try {
-        $wingetArgs = @(
-            "upgrade",
-            "--all",
-            "--include-unknown",
-            "--accept-package-agreements",
-            "--accept-source-agreements",
-            "--silent"
-        )
-    
-        Start-Process "winget.exe" -ArgumentList $wingetArgs -Wait -NoNewWindow
-    
-        Write-Host ""
-        Write-LeftAligned "$FGGreen$Char_HeavyCheck WinGet update completed.$Reset"
-    }
-    catch {
-        Write-LeftAligned "$FGRed$Char_Warn Update failed: $($_.Exception.Message)$Reset"
-    }
-
-}
 
 function Invoke-WA_OptimizeDisks {
     <#
@@ -2890,7 +2833,6 @@ while ($true) {
     Write-LeftAligned "${FGDarkGray}[${mTopColor}#${FGDarkGray}]${mTopColor} OF DAYS SINCE LAST RUN      ${FGDarkGray}|${mTopColor} ATOMIC_SCRIPT$Reset" -Indent 3
     Write-Centered "${FGDarkGray}--------------------------------------------------------$Reset"
     Write-MaintItem "Get Updates" "RUN_UpdateSuite.ps1" "Maintenance_WinUpdate" -Threshold 1
-    Write-MaintItem "WinGet App Updates" "RUN_WingetUpgrade.ps1" "Maintenance_WinUpdate" -Threshold 1
     Write-MaintItem "Drive Optimization" "RUN_OptimizeDisks.ps1" "Maintenance_Disk" -Threshold 7
     Write-MaintItem "Temp File Cleanup" "RUN_SystemCleanup.ps1" "Maintenance_Cleanup" -Threshold 7
     Write-MaintItem "SFC / DISM Repair" "RUN_WindowsRepair.ps1" "Maintenance_SFC" -Threshold 30
