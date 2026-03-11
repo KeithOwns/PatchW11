@@ -22,6 +22,7 @@ Standardized security hardening modules.
 - **SET_EnablePhishingProtection-WinAuto.ps1**: Manages Enhanced Phishing Protection.
 - **SET_EnablePhishingProtectionMalicious-WinAuto.ps1**: Toggles malicious app/site warnings.
 - **SET_FirewallON-WinAuto.ps1**: Ensures Firewall is active on all profiles.
+- **UIA_AppBrowserCtrl.ps1**: Automates Windows Security App & browser control.
 
 ### System Maintenance & UI (RUN/SET)
 Extracted standalone actions from the maintenance suite.
