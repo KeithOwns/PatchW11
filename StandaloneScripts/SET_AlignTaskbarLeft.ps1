@@ -1,18 +1,14 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Toggles 'Automatically save restartable apps and restart them when I sign back in'.
+    Aligns the Windows 11 Taskbar to the Left or Center.
 .DESCRIPTION
-    Toggles the "RestartApps" registry key in HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon.
-    1 = Enabled
-    0 = Disabled
-.PARAMETER TurnOn
-    Forces the setting to be Enabled, regardless of current state.
+    Standardized for WinAuto. Tweaks HKCU registry for taskbar alignment.
+.PARAMETER Undo
+    Reverses the setting (Sets Taskbar to Center).
 #>
 
-param(
-    [switch]$TurnOn
-)
+param([switch]$Undo)
 
 # --- STANDALONE UI & LOGGING RESOURCES ---
 $Esc = [char]0x1B
@@ -28,44 +24,34 @@ function Write-Header { param([string]$Title) Clear-Host; Write-Host ""; $t1 = "
 function Invoke-AnimatedPause { param([string]$ActionText = "CONTINUE", [int]$Timeout = 10) Write-Host ""; $top = [Console]::CursorTop; $StopWatch = [System.Diagnostics.Stopwatch]::StartNew(); while ($StopWatch.Elapsed.TotalSeconds -lt $Timeout) { if ([Console]::KeyAvailable) { $StopWatch.Stop(); return $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") }; $Elapsed = $StopWatch.Elapsed; $Filled = [Math]::Floor($Elapsed.TotalSeconds); $Dynamic = ""; for ($i=0;$i-lt 10;$i++) { $c = if ($i -lt 5) { "Enter"[$i] } else { " " }; if ($i -lt $Filled) { $Dynamic += "${BGYellow}${FGBlack}$c${Reset}" } else { $Dynamic += "${FGYellow}$c${Reset}" } }; Write-Centered "${FGWhite}$Char_Keyboard Press ${FGDarkGray}$Dynamic${FGDarkGray}${FGWhite} to ${FGYellow}$ActionText${FGDarkGray} | or SKIP$Char_Skip${Reset}"; try { [Console]::SetCursorPosition(0, $top) } catch {}; Start-Sleep -Milliseconds 100 }; $StopWatch.Stop(); return [PSCustomObject]@{VirtualKeyCode=13} }
 function Write-Log { param([string]$Message, [string]$Level = 'INFO') $c = switch($Level){'ERROR'{$FGRed};'WARNING'{$FGYellow};'SUCCESS'{$FGGreen};Default{$FGGray}}; Write-LeftAligned "$c$Message$Reset" }
 
-Write-Header "APP RESTART"
+# --- MAIN ---
+
+Write-Header "TASKBAR ALIGNMENT"
 
 try {
-    $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
-    $regName = "RestartApps"
+    $target = if ($Undo) { 1 } else { 0 } # 0 = Left, 1 = Center
+    $pos = if ($Undo) { "Center" } else { "Left" }
 
-    # Ensure path exists (Though HKCU Winlogon usually does)
-    if (-not (Test-Path $regPath)) {
-        New-Item -Path $regPath -Force | Out-Null
-    }
+    Write-LeftAligned "$FGYellow Aligning Taskbar to $pos...$Reset"
 
-    # Get current value (Default to 0 if not present)
-    $currentVal = (Get-ItemProperty -Path $regPath -Name $regName -ErrorAction SilentlyContinue).$regName
-    if ($null -eq $currentVal) { $currentVal = 0 }
+    $path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+    Set-ItemProperty -Path $path -Name "TaskbarAl" -Value $target -Type DWord -Force
 
-    # Logic: If -TurnOn is used, force Enable. Else, Toggle.
-    if ($TurnOn) {
-        $newValue = 1
-        $statusText = "ENABLED"
-        $icon = $Char_HeavyCheck
-        $color = $FGGreen
-    } elseif ($currentVal -eq 1) {
-        $newValue = 0
-        $statusText = "DISABLED"
-        $icon = $Char_Warn
-        $color = $FGYellow
-    } else {
-        $newValue = 1
-        $statusText = "ENABLED"
-        $icon = $Char_HeavyCheck
-        $color = $FGGreen
-    }
+    Write-LeftAligned "$FGGreen$Char_HeavyCheck Taskbar Aligned to $pos successful.$Reset"
+    
+    # Restart explorer to apply
+    Write-LeftAligned "$FGDarkCyan Restarting File Explorer to apply UI changes...$Reset"
+    Stop-Process -Name explorer -Force
 
-    # Apply new value
-    Set-ItemProperty -Path $regPath -Name $regName -Value $newValue -Type DWord -Force
+} catch { Write-LeftAligned "$FGRed$Char_RedCross Error: $($_.Exception.Message)$Reset" }
 
-    Write-LeftAligned "$color$icon  'Restart apps after signing in' is now $statusText.$Reset"
+Write-Host ""
+Write-Boundary $FGDarkBlue
+Start-Sleep -Seconds 1
+Write-Host ""
 
-} catch {
-    Write-LeftAligned "$FGRed$Char_RedCross  Failed to modify setting: $($_.Exception.Message)$Reset"
-}
+
+
+
+
+

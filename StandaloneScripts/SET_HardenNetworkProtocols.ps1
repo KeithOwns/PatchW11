@@ -1,18 +1,14 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Toggles 'Automatically save restartable apps and restart them when I sign back in'.
+    Hardens or Restores Network Protocols (NetBIOS, LLMNR).
 .DESCRIPTION
-    Toggles the "RestartApps" registry key in HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon.
-    1 = Enabled
-    0 = Disabled
-.PARAMETER TurnOn
-    Forces the setting to be Enabled, regardless of current state.
+    Standardized for WinAuto. Disables (Harden) or Enables (Undo) legacy protocols.
+.PARAMETER Undo
+    Reverses the hardening (Enables NetBIOS and LLMNR).
 #>
 
-param(
-    [switch]$TurnOn
-)
+param([switch]$Undo)
 
 # --- STANDALONE UI & LOGGING RESOURCES ---
 $Esc = [char]0x1B
@@ -28,44 +24,48 @@ function Write-Header { param([string]$Title) Clear-Host; Write-Host ""; $t1 = "
 function Invoke-AnimatedPause { param([string]$ActionText = "CONTINUE", [int]$Timeout = 10) Write-Host ""; $top = [Console]::CursorTop; $StopWatch = [System.Diagnostics.Stopwatch]::StartNew(); while ($StopWatch.Elapsed.TotalSeconds -lt $Timeout) { if ([Console]::KeyAvailable) { $StopWatch.Stop(); return $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") }; $Elapsed = $StopWatch.Elapsed; $Filled = [Math]::Floor($Elapsed.TotalSeconds); $Dynamic = ""; for ($i=0;$i-lt 10;$i++) { $c = if ($i -lt 5) { "Enter"[$i] } else { " " }; if ($i -lt $Filled) { $Dynamic += "${BGYellow}${FGBlack}$c${Reset}" } else { $Dynamic += "${FGYellow}$c${Reset}" } }; Write-Centered "${FGWhite}$Char_Keyboard Press ${FGDarkGray}$Dynamic${FGDarkGray}${FGWhite} to ${FGYellow}$ActionText${FGDarkGray} | or SKIP$Char_Skip${Reset}"; try { [Console]::SetCursorPosition(0, $top) } catch {}; Start-Sleep -Milliseconds 100 }; $StopWatch.Stop(); return [PSCustomObject]@{VirtualKeyCode=13} }
 function Write-Log { param([string]$Message, [string]$Level = 'INFO') $c = switch($Level){'ERROR'{$FGRed};'WARNING'{$FGYellow};'SUCCESS'{$FGGreen};Default{$FGGray}}; Write-LeftAligned "$c$Message$Reset" }
 
-Write-Header "APP RESTART"
+# --- MAIN ---
+
+Write-Header "NETWORK PROTOCOL HARDENING"
 
 try {
-    $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
-    $regName = "RestartApps"
+    $targetValue = if ($Undo) { 1 } else { 0 } # 0 = Disable LLMNR, 1 = Enable
+    $netbiosVal = if ($Undo) { 1 } else { 2 } # 1 = Enable, 2 = Disable
+    $action = if ($Undo) { "Restoring" } else { "Hardening" }
+    $status = if ($Undo) { "Enabled" } else { "Disabled" }
 
-    # Ensure path exists (Though HKCU Winlogon usually does)
-    if (-not (Test-Path $regPath)) {
-        New-Item -Path $regPath -Force | Out-Null
+    Write-LeftAligned "$FGYellow $action network protocols...$Reset"
+
+    # 1. LLMNR
+    $path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"
+    if (-not (Test-Path $path)) { New-Item -Path $path -Force | Out-Null }
+    # Note: EnableMulticast=0 means LLMNR is Disabled.
+    # So if $Undo is false, target is 0. If $Undo is true, we remove or set to 1.
+    $llmnrVal = if ($Undo) { 1 } else { 0 }
+    Set-ItemProperty -Path $path -Name "EnableMulticast" -Value $llmnrVal -Type DWord -Force
+    Write-LeftAligned "  $FGGreen$Char_HeavyCheck LLMNR is now $status.$Reset"
+
+    # 2. NetBIOS
+    $adapters = Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object { $_.IPEnabled -eq $true }
+    foreach ($a in $adapters) {
+        $a.SetTcpipNetbios($netbiosVal) | Out-Null
     }
+    Write-LeftAligned "  $FGGreen$Char_HeavyCheck NetBIOS over TCP/IP is now $status.$Reset"
 
-    # Get current value (Default to 0 if not present)
-    $currentVal = (Get-ItemProperty -Path $regPath -Name $regName -ErrorAction SilentlyContinue).$regName
-    if ($null -eq $currentVal) { $currentVal = 0 }
+    Write-Host ""
+    Write-Boundary $FGDarkGray
+    Write-Centered "RESTART RECOMMENDED"
+    Write-Boundary $FGDarkGray
 
-    # Logic: If -TurnOn is used, force Enable. Else, Toggle.
-    if ($TurnOn) {
-        $newValue = 1
-        $statusText = "ENABLED"
-        $icon = $Char_HeavyCheck
-        $color = $FGGreen
-    } elseif ($currentVal -eq 1) {
-        $newValue = 0
-        $statusText = "DISABLED"
-        $icon = $Char_Warn
-        $color = $FGYellow
-    } else {
-        $newValue = 1
-        $statusText = "ENABLED"
-        $icon = $Char_HeavyCheck
-        $color = $FGGreen
-    }
+} catch { Write-LeftAligned "$FGRed$Char_RedCross Error: $($_.Exception.Message)$Reset" }
 
-    # Apply new value
-    Set-ItemProperty -Path $regPath -Name $regName -Value $newValue -Type DWord -Force
+Write-Host ""
+Write-Boundary $FGDarkBlue
+Start-Sleep -Seconds 1
+Write-Host ""
 
-    Write-LeftAligned "$color$icon  'Restart apps after signing in' is now $statusText.$Reset"
 
-} catch {
-    Write-LeftAligned "$FGRed$Char_RedCross  Failed to modify setting: $($_.Exception.Message)$Reset"
-}
+
+
+
+

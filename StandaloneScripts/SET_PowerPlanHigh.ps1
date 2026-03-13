@@ -1,18 +1,14 @@
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Toggles 'Automatically save restartable apps and restart them when I sign back in'.
+    Sets the System Power Plan to High Performance or Balanced.
 .DESCRIPTION
-    Toggles the "RestartApps" registry key in HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon.
-    1 = Enabled
-    0 = Disabled
-.PARAMETER TurnOn
-    Forces the setting to be Enabled, regardless of current state.
+    Standardized for WinAuto.
+.PARAMETER Undo
+    Reverses the setting (Sets Power Plan to Balanced).
 #>
 
-param(
-    [switch]$TurnOn
-)
+param([switch]$Undo)
 
 # --- STANDALONE UI & LOGGING RESOURCES ---
 $Esc = [char]0x1B
@@ -28,44 +24,28 @@ function Write-Header { param([string]$Title) Clear-Host; Write-Host ""; $t1 = "
 function Invoke-AnimatedPause { param([string]$ActionText = "CONTINUE", [int]$Timeout = 10) Write-Host ""; $top = [Console]::CursorTop; $StopWatch = [System.Diagnostics.Stopwatch]::StartNew(); while ($StopWatch.Elapsed.TotalSeconds -lt $Timeout) { if ([Console]::KeyAvailable) { $StopWatch.Stop(); return $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") }; $Elapsed = $StopWatch.Elapsed; $Filled = [Math]::Floor($Elapsed.TotalSeconds); $Dynamic = ""; for ($i=0;$i-lt 10;$i++) { $c = if ($i -lt 5) { "Enter"[$i] } else { " " }; if ($i -lt $Filled) { $Dynamic += "${BGYellow}${FGBlack}$c${Reset}" } else { $Dynamic += "${FGYellow}$c${Reset}" } }; Write-Centered "${FGWhite}$Char_Keyboard Press ${FGDarkGray}$Dynamic${FGDarkGray}${FGWhite} to ${FGYellow}$ActionText${FGDarkGray} | or SKIP$Char_Skip${Reset}"; try { [Console]::SetCursorPosition(0, $top) } catch {}; Start-Sleep -Milliseconds 100 }; $StopWatch.Stop(); return [PSCustomObject]@{VirtualKeyCode=13} }
 function Write-Log { param([string]$Message, [string]$Level = 'INFO') $c = switch($Level){'ERROR'{$FGRed};'WARNING'{$FGYellow};'SUCCESS'{$FGGreen};Default{$FGGray}}; Write-LeftAligned "$c$Message$Reset" }
 
-Write-Header "APP RESTART"
+# --- MAIN ---
+
+Write-Header "POWER SETTINGS"
 
 try {
-    $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
-    $regName = "RestartApps"
+    $planName = if ($Undo) { "Balanced" } else { "High Performance" }
+    $planGuid = if ($Undo) { "381b4222-f694-41f0-9685-ff5bb260df2e" } else { "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" }
 
-    # Ensure path exists (Though HKCU Winlogon usually does)
-    if (-not (Test-Path $regPath)) {
-        New-Item -Path $regPath -Force | Out-Null
-    }
-
-    # Get current value (Default to 0 if not present)
-    $currentVal = (Get-ItemProperty -Path $regPath -Name $regName -ErrorAction SilentlyContinue).$regName
-    if ($null -eq $currentVal) { $currentVal = 0 }
-
-    # Logic: If -TurnOn is used, force Enable. Else, Toggle.
-    if ($TurnOn) {
-        $newValue = 1
-        $statusText = "ENABLED"
-        $icon = $Char_HeavyCheck
-        $color = $FGGreen
-    } elseif ($currentVal -eq 1) {
-        $newValue = 0
-        $statusText = "DISABLED"
-        $icon = $Char_Warn
-        $color = $FGYellow
-    } else {
-        $newValue = 1
-        $statusText = "ENABLED"
-        $icon = $Char_HeavyCheck
-        $color = $FGGreen
-    }
-
-    # Apply new value
-    Set-ItemProperty -Path $regPath -Name $regName -Value $newValue -Type DWord -Force
-
-    Write-LeftAligned "$color$icon  'Restart apps after signing in' is now $statusText.$Reset"
+    Write-LeftAligned "$FGYellow Setting power plan to $planName...$Reset"
+    
+    # Ensure plan exists (imports if needed, though standard ones usually do)
+    powercfg /setactive $planGuid
+    
+    Write-LeftAligned "$FGGreen$Char_HeavyCheck Power plan set to $planName successful.$Reset"
 
 } catch {
-    Write-LeftAligned "$FGRed$Char_RedCross  Failed to modify setting: $($_.Exception.Message)$Reset"
+    $errMsg = "$($_.Exception.Message)"
+    Write-LeftAligned "$FGRed$Char_RedCross Error: $errMsg$Reset"
+    Write-Log "Power Plan Error: $errMsg" -Level ERROR
 }
+
+Write-Host ""
+Write-Boundary $FGDarkBlue
+Start-Sleep -Seconds 1
+Write-Host ""

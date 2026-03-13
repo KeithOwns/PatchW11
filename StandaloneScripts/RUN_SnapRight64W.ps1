@@ -1,18 +1,11 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
+#Requires -Version 5.1
 <#
 .SYNOPSIS
-    Toggles 'Automatically save restartable apps and restart them when I sign back in'.
+    Resizes console to 64 columns and snaps to right edge.
 .DESCRIPTION
-    Toggles the "RestartApps" registry key in HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon.
-    1 = Enabled
-    0 = Disabled
-.PARAMETER TurnOn
-    Forces the setting to be Enabled, regardless of current state.
+    Standardized for WinAuto. Adjusts window dimensions and position.
 #>
-
-param(
-    [switch]$TurnOn
-)
 
 # --- STANDALONE UI & LOGGING RESOURCES ---
 $Esc = [char]0x1B
@@ -28,44 +21,66 @@ function Write-Header { param([string]$Title) Clear-Host; Write-Host ""; $t1 = "
 function Invoke-AnimatedPause { param([string]$ActionText = "CONTINUE", [int]$Timeout = 10) Write-Host ""; $top = [Console]::CursorTop; $StopWatch = [System.Diagnostics.Stopwatch]::StartNew(); while ($StopWatch.Elapsed.TotalSeconds -lt $Timeout) { if ([Console]::KeyAvailable) { $StopWatch.Stop(); return $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") }; $Elapsed = $StopWatch.Elapsed; $Filled = [Math]::Floor($Elapsed.TotalSeconds); $Dynamic = ""; for ($i=0;$i-lt 10;$i++) { $c = if ($i -lt 5) { "Enter"[$i] } else { " " }; if ($i -lt $Filled) { $Dynamic += "${BGYellow}${FGBlack}$c${Reset}" } else { $Dynamic += "${FGYellow}$c${Reset}" } }; Write-Centered "${FGWhite}$Char_Keyboard Press ${FGDarkGray}$Dynamic${FGDarkGray}${FGWhite} to ${FGYellow}$ActionText${FGDarkGray} | or SKIP$Char_Skip${Reset}"; try { [Console]::SetCursorPosition(0, $top) } catch {}; Start-Sleep -Milliseconds 100 }; $StopWatch.Stop(); return [PSCustomObject]@{VirtualKeyCode=13} }
 function Write-Log { param([string]$Message, [string]$Level = 'INFO') $c = switch($Level){'ERROR'{$FGRed};'WARNING'{$FGYellow};'SUCCESS'{$FGGreen};Default{$FGGray}}; Write-LeftAligned "$c$Message$Reset" }
 
-Write-Header "APP RESTART"
+# --- NATIVE METHODS ---
+$code = @"
+using System;
+using System.Runtime.InteropServices;
+namespace WinAuto {
+    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+    public class WinUtils {
+        [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
+        [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+        [DllImport("user32.dll")] public static extern int GetSystemMetrics(int nIndex);
+        [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+    }
+}
+"@
+try { Add-Type -TypeDefinition $code -ErrorAction SilentlyContinue } catch {}
 
+# --- MAIN ---
 try {
-    $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
-    $regName = "RestartApps"
+    Write-LeftAligned "$FGYellow Snapping window to right (64W)...$Reset"
 
-    # Ensure path exists (Though HKCU Winlogon usually does)
-    if (-not (Test-Path $regPath)) {
-        New-Item -Path $regPath -Force | Out-Null
+    $targetWidth = 64
+    $targetHeight = 50
+    $currentHeight = $Host.UI.RawUI.WindowSize.Height
+    if ($currentHeight -gt $targetHeight) { $targetHeight = $currentHeight }
+
+    $window = $Host.UI.RawUI.WindowSize
+    $window.Width = $targetWidth
+    $window.Height = $targetHeight
+
+    $buffer = $Host.UI.RawUI.BufferSize
+    if ($buffer.Height -lt $targetHeight) {
+        $buffer.Height = $targetHeight
+        $Host.UI.RawUI.BufferSize = $buffer
     }
 
-    # Get current value (Default to 0 if not present)
-    $currentVal = (Get-ItemProperty -Path $regPath -Name $regName -ErrorAction SilentlyContinue).$regName
-    if ($null -eq $currentVal) { $currentVal = 0 }
+    $Host.UI.RawUI.WindowSize = $window
+    $buffer = $Host.UI.RawUI.BufferSize
+    $buffer.Width = $targetWidth
+    $Host.UI.RawUI.BufferSize = $buffer
 
-    # Logic: If -TurnOn is used, force Enable. Else, Toggle.
-    if ($TurnOn) {
-        $newValue = 1
-        $statusText = "ENABLED"
-        $icon = $Char_HeavyCheck
-        $color = $FGGreen
-    } elseif ($currentVal -eq 1) {
-        $newValue = 0
-        $statusText = "DISABLED"
-        $icon = $Char_Warn
-        $color = $FGYellow
-    } else {
-        $newValue = 1
-        $statusText = "ENABLED"
-        $icon = $Char_HeavyCheck
-        $color = $FGGreen
-    }
+    $hWnd = [WinAuto.WinUtils]::GetConsoleWindow()
+    $screenW = [WinAuto.WinUtils]::GetSystemMetrics(0) # SM_CXSCREEN
+    $screenH = [WinAuto.WinUtils]::GetSystemMetrics(1) # SM_CYSCREEN
 
-    # Apply new value
-    Set-ItemProperty -Path $regPath -Name $regName -Value $newValue -Type DWord -Force
+    $targetW = [Math]::Floor($screenW / 3)
+    $targetX = $screenW - $targetW
 
-    Write-LeftAligned "$color$icon  'Restart apps after signing in' is now $statusText.$Reset"
+    # We need to respect the console font/buffer width if possible, but MoveWindow sets the pixel size.
+    # The original script prioritized 64 columns text width. 
+    # If we want to strictly follow "Right Third", we should set pixel width to targetW.
+    
+    $null = [WinAuto.WinUtils]::MoveWindow($hWnd, $targetX, 0, $targetW, $screenH, $true)
+
+    Write-LeftAligned "$FGGreen$Char_HeavyCheck Success! Console resized and snapped.$Reset"
 
 } catch {
-    Write-LeftAligned "$FGRed$Char_RedCross  Failed to modify setting: $($_.Exception.Message)$Reset"
+    Write-LeftAligned "$FGRed$Char_RedCross Failed: $($_.Exception.Message)$Reset"
 }
+
+Start-Sleep -Seconds 1
+
+
+

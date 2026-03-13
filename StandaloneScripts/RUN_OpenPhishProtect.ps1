@@ -1,18 +1,10 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Toggles 'Automatically save restartable apps and restart them when I sign back in'.
+  A stand-alone script to open Phishing Protection settings.
 .DESCRIPTION
-    Toggles the "RestartApps" registry key in HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon.
-    1 = Enabled
-    0 = Disabled
-.PARAMETER TurnOn
-    Forces the setting to be Enabled, regardless of current state.
+  Standardized for WinAuto. Opens Windows Security > App & browser control.
 #>
-
-param(
-    [switch]$TurnOn
-)
 
 # --- STANDALONE UI & LOGGING RESOURCES ---
 $Esc = [char]0x1B
@@ -28,44 +20,48 @@ function Write-Header { param([string]$Title) Clear-Host; Write-Host ""; $t1 = "
 function Invoke-AnimatedPause { param([string]$ActionText = "CONTINUE", [int]$Timeout = 10) Write-Host ""; $top = [Console]::CursorTop; $StopWatch = [System.Diagnostics.Stopwatch]::StartNew(); while ($StopWatch.Elapsed.TotalSeconds -lt $Timeout) { if ([Console]::KeyAvailable) { $StopWatch.Stop(); return $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") }; $Elapsed = $StopWatch.Elapsed; $Filled = [Math]::Floor($Elapsed.TotalSeconds); $Dynamic = ""; for ($i=0;$i-lt 10;$i++) { $c = if ($i -lt 5) { "Enter"[$i] } else { " " }; if ($i -lt $Filled) { $Dynamic += "${BGYellow}${FGBlack}$c${Reset}" } else { $Dynamic += "${FGYellow}$c${Reset}" } }; Write-Centered "${FGWhite}$Char_Keyboard Press ${FGDarkGray}$Dynamic${FGDarkGray}${FGWhite} to ${FGYellow}$ActionText${FGDarkGray} | or SKIP$Char_Skip${Reset}"; try { [Console]::SetCursorPosition(0, $top) } catch {}; Start-Sleep -Milliseconds 100 }; $StopWatch.Stop(); return [PSCustomObject]@{VirtualKeyCode=13} }
 function Write-Log { param([string]$Message, [string]$Level = 'INFO') $c = switch($Level){'ERROR'{$FGRed};'WARNING'{$FGYellow};'SUCCESS'{$FGGreen};Default{$FGGray}}; Write-LeftAligned "$c$Message$Reset" }
 
-Write-Header "APP RESTART"
+#region Functions
 
-try {
-    $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
-    $regName = "RestartApps"
-
-    # Ensure path exists (Though HKCU Winlogon usually does)
-    if (-not (Test-Path $regPath)) {
-        New-Item -Path $regPath -Force | Out-Null
-    }
-
-    # Get current value (Default to 0 if not present)
-    $currentVal = (Get-ItemProperty -Path $regPath -Name $regName -ErrorAction SilentlyContinue).$regName
-    if ($null -eq $currentVal) { $currentVal = 0 }
-
-    # Logic: If -TurnOn is used, force Enable. Else, Toggle.
-    if ($TurnOn) {
-        $newValue = 1
-        $statusText = "ENABLED"
-        $icon = $Char_HeavyCheck
-        $color = $FGGreen
-    } elseif ($currentVal -eq 1) {
-        $newValue = 0
-        $statusText = "DISABLED"
-        $icon = $Char_Warn
-        $color = $FGYellow
-    } else {
-        $newValue = 1
-        $statusText = "ENABLED"
-        $icon = $Char_HeavyCheck
-        $color = $FGGreen
-    }
-
-    # Apply new value
-    Set-ItemProperty -Path $regPath -Name $regName -Value $newValue -Type DWord -Force
-
-    Write-LeftAligned "$color$icon  'Restart apps after signing in' is now $statusText.$Reset"
-
-} catch {
-    Write-LeftAligned "$FGRed$Char_RedCross  Failed to modify setting: $($_.Exception.Message)$Reset"
+function Open-PhishingSettings {
+    try {
+        Start-Process -FilePath "windowsdefender://appbrowser"
+        Start-Sleep -Seconds 2
+        $wshell = New-Object -ComObject WScript.Shell
+        if ($wshell.AppActivate("Windows Security")) {
+            Start-Sleep -Milliseconds 500
+            $wshell.SendKeys("{TAB 2}")
+        }
+        return $true
+    } catch { return $false }
 }
+
+#endregion
+
+# --- MAIN ---
+
+Write-Header "PHISHING PROTECTION UI"
+
+Write-LeftAligned "$FGYellow Note: Phishing protection for Edge must be manually set!$Reset"
+Write-Host ""
+
+$res = Start-Sleep -Seconds 1
+
+if ($res.VirtualKeyCode -eq 13) {
+    Write-LeftAligned "$FGGreen$Char_HeavyCheck Opening Windows Security > App & browser control...$Reset"
+    if (-not (Open-PhishingSettings)) {
+        Write-LeftAligned "$FGRed$Char_RedCross Failed to open settings automatically.$Reset"
+    }
+} else {
+    Write-LeftAligned "$FGGray  - Skipping Windows phishing protection setup.$Reset"
+}
+
+Write-Host ""
+Write-Boundary $FGDarkBlue
+Start-Sleep -Seconds 1
+Write-Host ""
+
+
+
+
+
+

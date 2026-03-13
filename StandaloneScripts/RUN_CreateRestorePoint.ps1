@@ -1,18 +1,13 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Toggles 'Automatically save restartable apps and restart them when I sign back in'.
+    Enables System Protection and Creates a System Restore Point in Windows 11
 .DESCRIPTION
-    Toggles the "RestartApps" registry key in HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon.
-    1 = Enabled
-    0 = Disabled
-.PARAMETER TurnOn
-    Forces the setting to be Enabled, regardless of current state.
+    Standardized for WinAuto. Ensures C: is protected and creates point.
 #>
 
-param(
-    [switch]$TurnOn
-)
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
 # --- STANDALONE UI & LOGGING RESOURCES ---
 $Esc = [char]0x1B
@@ -28,44 +23,44 @@ function Write-Header { param([string]$Title) Clear-Host; Write-Host ""; $t1 = "
 function Invoke-AnimatedPause { param([string]$ActionText = "CONTINUE", [int]$Timeout = 10) Write-Host ""; $top = [Console]::CursorTop; $StopWatch = [System.Diagnostics.Stopwatch]::StartNew(); while ($StopWatch.Elapsed.TotalSeconds -lt $Timeout) { if ([Console]::KeyAvailable) { $StopWatch.Stop(); return $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") }; $Elapsed = $StopWatch.Elapsed; $Filled = [Math]::Floor($Elapsed.TotalSeconds); $Dynamic = ""; for ($i=0;$i-lt 10;$i++) { $c = if ($i -lt 5) { "Enter"[$i] } else { " " }; if ($i -lt $Filled) { $Dynamic += "${BGYellow}${FGBlack}$c${Reset}" } else { $Dynamic += "${FGYellow}$c${Reset}" } }; Write-Centered "${FGWhite}$Char_Keyboard Press ${FGDarkGray}$Dynamic${FGDarkGray}${FGWhite} to ${FGYellow}$ActionText${FGDarkGray} | or SKIP$Char_Skip${Reset}"; try { [Console]::SetCursorPosition(0, $top) } catch {}; Start-Sleep -Milliseconds 100 }; $StopWatch.Stop(); return [PSCustomObject]@{VirtualKeyCode=13} }
 function Write-Log { param([string]$Message, [string]$Level = 'INFO') $c = switch($Level){'ERROR'{$FGRed};'WARNING'{$FGYellow};'SUCCESS'{$FGGreen};Default{$FGGray}}; Write-LeftAligned "$c$Message$Reset" }
 
-Write-Header "APP RESTART"
+# --- MAIN ---
+
+Write-Header "SYSTEM RESTORE POINT CREATOR"
+
+# STEP 1: Enable Protection
+Write-LeftAligned "$FGWhite$Char_HeavyMinus STEP 1: Enabling System Protection$Reset"
+try {
+    Write-LeftAligned "  $FGYellow Attempting to enable System Protection on C:\...$Reset"
+    Enable-ComputerRestore -Drive "C:\"
+    Write-LeftAligned "  $FGGreen$Char_HeavyCheck Successfully enabled System Protection.$Reset"
+    Start-Sleep -Seconds 1
+} catch {
+    Write-LeftAligned "  $FGGray  (System Protection may already be enabled or managed by policy)$Reset"
+}
+
+# STEP 2: Create Point
+Write-Host ""
+Write-LeftAligned "$FGWhite$Char_HeavyMinus STEP 2: Creating Restore Point$Reset"
+$description = "WinAuto Manual Point - $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+Write-LeftAligned "  $FGYellow Description: $description$Reset"
 
 try {
-    $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
-    $regName = "RestartApps"
-
-    # Ensure path exists (Though HKCU Winlogon usually does)
-    if (-not (Test-Path $regPath)) {
-        New-Item -Path $regPath -Force | Out-Null
-    }
-
-    # Get current value (Default to 0 if not present)
-    $currentVal = (Get-ItemProperty -Path $regPath -Name $regName -ErrorAction SilentlyContinue).$regName
-    if ($null -eq $currentVal) { $currentVal = 0 }
-
-    # Logic: If -TurnOn is used, force Enable. Else, Toggle.
-    if ($TurnOn) {
-        $newValue = 1
-        $statusText = "ENABLED"
-        $icon = $Char_HeavyCheck
-        $color = $FGGreen
-    } elseif ($currentVal -eq 1) {
-        $newValue = 0
-        $statusText = "DISABLED"
-        $icon = $Char_Warn
-        $color = $FGYellow
-    } else {
-        $newValue = 1
-        $statusText = "ENABLED"
-        $icon = $Char_HeavyCheck
-        $color = $FGGreen
-    }
-
-    # Apply new value
-    Set-ItemProperty -Path $regPath -Name $regName -Value $newValue -Type DWord -Force
-
-    Write-LeftAligned "$color$icon  'Restart apps after signing in' is now $statusText.$Reset"
-
+    Checkpoint-Computer -Description $description -RestorePointType "MODIFY_SETTINGS" -ErrorAction Stop
+    Write-Host ""
+    Write-LeftAligned "$FGGreen$Char_BallotCheck Restore Point created successfully!$Reset"
 } catch {
-    Write-LeftAligned "$FGRed$Char_RedCross  Failed to modify setting: $($_.Exception.Message)$Reset"
+    Write-Host ""
+    Write-LeftAligned "$FGRed$Char_RedCross Failed to create restore point.$Reset"
+    Write-LeftAligned "  Details: $($_.Exception.Message)" -ForegroundColor Gray
 }
+
+Write-Host ""
+Write-Boundary $FGDarkBlue
+Start-Sleep -Seconds 1
+Write-Host ""
+
+
+
+
+
+
