@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
     Toggles Windows 11 Widgets via UI Automation.
@@ -23,6 +23,41 @@ function Write-Centered { param([string]$Text, [int]$Width = 60) $clean = $Text 
 function Write-Header { param([string]$Title) Clear-Host; Write-Host ""; $t1 = "$([char]::ConvertFromUtf32(0x1FA9F)) WinAuto $Char_Loop"; Write-Centered "$Bold$FGCyan$t1$Reset"; Write-Boundary; Write-Centered "$Bold$FGCyan$($Title.ToUpper())$Reset"; Write-Boundary }
 function Invoke-AnimatedPause { param([string]$ActionText = "CONTINUE", [int]$Timeout = 10) Write-Host ""; $top = [Console]::CursorTop; $StopWatch = [System.Diagnostics.Stopwatch]::StartNew(); while ($StopWatch.Elapsed.TotalSeconds -lt $Timeout) { if ([Console]::KeyAvailable) { $StopWatch.Stop(); return $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") }; $Elapsed = $StopWatch.Elapsed; $Filled = [Math]::Floor($Elapsed.TotalSeconds); $Dynamic = ""; for ($i=0;$i-lt 10;$i++) { $c = if ($i -lt 5) { "Enter"[$i] } else { " " }; if ($i -lt $Filled) { $Dynamic += "${BGYellow}${FGBlack}$c${Reset}" } else { $Dynamic += "${FGYellow}$c${Reset}" } }; Write-Centered "${FGWhite}$Char_Keyboard Press ${FGDarkGray}$Dynamic${FGDarkGray}${FGWhite} to ${FGYellow}$ActionText${FGDarkGray} | or SKIP$Char_Skip${Reset}"; try { [Console]::SetCursorPosition(0, $top) } catch {}; Start-Sleep -Milliseconds 100 }; $StopWatch.Stop(); return [PSCustomObject]@{VirtualKeyCode=13} }
 function Write-Log { param([string]$Message, [string]$Level = 'INFO') $c = switch($Level){'ERROR'{$FGRed};'WARNING'{$FGYellow};'SUCCESS'{$FGGreen};Default{$FGGray}}; Write-LeftAligned "$c$Message$Reset" }
+
+function Get-UIAElement {
+    param(
+        [System.Windows.Automation.AutomationElement]$Parent,
+        [string]$Name,
+        [System.Windows.Automation.ControlType]$ControlType,
+        [int]$TimeoutSeconds = 10
+    )
+    
+    $Condition = if ($Name -and $ControlType) {
+        $c1 = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $Name)
+        $c2 = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, $ControlType)
+        New-Object System.Windows.Automation.AndCondition($c1, $c2)
+    }
+    elseif ($Name) {
+        New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $Name)
+    }
+    elseif ($ControlType) {
+        New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, $ControlType)
+    }
+    else {
+        return $null
+    }
+
+    $StopWatch = [System.Diagnostics.Stopwatch]::StartNew()
+    while ($StopWatch.Elapsed.TotalSeconds -lt $TimeoutSeconds) {
+        $Result = $Parent.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $Condition)
+        if ($Result) { return $Result }
+        Start-Sleep -Milliseconds 500
+    }
+    return $null
+}
+
+
+;'WARNING'{$FGYellow};'SUCCESS'{$FGGreen};Default{$FGGray}}; Write-LeftAligned "$c$Message$Reset" }
 
 Write-Header "TASKBAR WIDGETS"
 
@@ -92,7 +127,7 @@ function Invoke-WA_SetWidgetsUIA {
     Write-LeftAligned "Searching for Settings window..."
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     while ($sw.Elapsed.TotalSeconds -lt 15) {
-        foreach ($title in @("Settings", "Paramètres", "Einstellungen")) {
+        foreach ($title in @("Settings", "ParamÃ¨tres", "Einstellungen")) {
             $Window = $Desktop.FindFirst([System.Windows.Automation.TreeScope]::Children, 
                 (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $title)))
             if ($Window) { break }

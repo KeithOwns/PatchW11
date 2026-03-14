@@ -20,34 +20,7 @@ function Write-Header { param([string]$Title) Clear-Host; Write-Host ""; $t1 = "
 function Invoke-AnimatedPause { param([string]$ActionText = "CONTINUE", [int]$Timeout = 10) Write-Host ""; $top = [Console]::CursorTop; $StopWatch = [System.Diagnostics.Stopwatch]::StartNew(); while ($StopWatch.Elapsed.TotalSeconds -lt $Timeout) { if ([Console]::KeyAvailable) { $StopWatch.Stop(); return $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") }; $Elapsed = $StopWatch.Elapsed; $Filled = [Math]::Floor($Elapsed.TotalSeconds); $Dynamic = ""; for ($i=0;$i-lt 10;$i++) { $c = if ($i -lt 5) { "Enter"[$i] } else { " " }; if ($i -lt $Filled) { $Dynamic += "${BGYellow}${FGBlack}$c${Reset}" } else { $Dynamic += "${FGYellow}$c${Reset}" } }; Write-Centered "${FGWhite}$Char_Keyboard Press ${FGDarkGray}$Dynamic${FGDarkGray}${FGWhite} to ${FGYellow}$ActionText${FGDarkGray} | or SKIP$Char_Skip${Reset}"; try { [Console]::SetCursorPosition(0, $top) } catch {}; Start-Sleep -Milliseconds 100 }; $StopWatch.Stop(); return [PSCustomObject]@{VirtualKeyCode=13} }
 function Write-Log { param([string]$Message, [string]$Level = 'INFO') $c = switch($Level){'ERROR'{$FGRed};'WARNING'{$FGYellow};'SUCCESS'{$FGGreen};Default{$FGGray}}; Write-LeftAligned "$c$Message$Reset" }
 
-#region Functions
 
-function Get-AppSmartScreenStatus {
-    $policyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System"
-    $userPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer"
-    
-    $status = "On"
-    $source = "Windows Default"
-    $isPolicy = $false
-
-    # 1. Policy
-    $pv = (Get-ItemProperty -Path $policyPath -Name "EnableSmartScreen" -ErrorAction SilentlyContinue).EnableSmartScreen
-    if ($null -ne $pv) {
-        $isPolicy = $true
-        $source = "Group Policy"
-        $status = if($pv -eq 1){"On"}else{"Off"}
-    }
-
-    # 2. User
-    if (-not $isPolicy) {
-        $uv = (Get-ItemProperty -Path $userPath -Name "SmartScreenEnabled" -ErrorAction SilentlyContinue).SmartScreenEnabled
-        if ($uv -eq "Off") { $status = "Off"; $source = "User Setting" }
-    }
-
-    return [PSCustomObject]@{ Status = $status; Source = $source }
-}
-
-#endregion
 
 # --- MAIN ---
 

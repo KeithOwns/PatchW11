@@ -28,59 +28,7 @@ function Write-Header { param([string]$Title) Clear-Host; Write-Host ""; $t1 = "
 function Invoke-AnimatedPause { param([string]$ActionText = "CONTINUE", [int]$Timeout = 10) Write-Host ""; $top = [Console]::CursorTop; $StopWatch = [System.Diagnostics.Stopwatch]::StartNew(); while ($StopWatch.Elapsed.TotalSeconds -lt $Timeout) { if ([Console]::KeyAvailable) { $StopWatch.Stop(); return $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") }; $Elapsed = $StopWatch.Elapsed; $Filled = [Math]::Floor($Elapsed.TotalSeconds); $Dynamic = ""; for ($i=0;$i-lt 10;$i++) { $c = if ($i -lt 5) { "Enter"[$i] } else { " " }; if ($i -lt $Filled) { $Dynamic += "${BGYellow}${FGBlack}$c${Reset}" } else { $Dynamic += "${FGYellow}$c${Reset}" } }; Write-Centered "${FGWhite}$Char_Keyboard Press ${FGDarkGray}$Dynamic${FGDarkGray}${FGWhite} to ${FGYellow}$ActionText${FGDarkGray} | or SKIP$Char_Skip${Reset}"; try { [Console]::SetCursorPosition(0, $top) } catch {}; Start-Sleep -Milliseconds 100 }; $StopWatch.Stop(); return [PSCustomObject]@{VirtualKeyCode=13} }
 function Write-Log { param([string]$Message, [string]$Level = 'INFO') $c = switch($Level){'ERROR'{$FGRed};'WARNING'{$FGYellow};'SUCCESS'{$FGGreen};Default{$FGGray}}; Write-LeftAligned "$c$Message$Reset" }
 
-#region Logic Configuration
-$Script:LogFile = "$env:TEMP\PUAProtection-W11-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
-$Script:BackupFile = "$env:TEMP\PUAProtection-Backup-W11-$(Get-Date -Format 'yyyyMMdd-HHmmss').json"
-$Script:GroupPolicyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender"
-$Script:GroupPolicyValue = "PUAProtection"
 
-$targetValue = if ($Undo) { 1 } else { 0 }
-$actionText = if ($Undo) { "ENABLE" } else { "DISABLE" }
-$statusText = if ($Undo) { "ENABLED" } else { "DISABLED" }
-#endregion
-
-#region Functions
-
-function Write-Step {
-    param([string]$Message, [ValidateSet('Info','Warning','Error','Success')]$Level = 'Info')
-    $color = switch ($Level) { 'Info'{'Cyan'}; 'Warning'{'Yellow'}; 'Error'{'Red'}; 'Success'{'Green'} }
-    Write-Host "[$((Get-Date).ToString('HH:mm:ss'))] " -NoNewline -ForegroundColor Gray
-    Write-Host "[$Level] " -NoNewline -ForegroundColor $color
-    Write-Host $Message
-    Add-Content -Path $Script:LogFile -Value "[$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))] [$Level] $Message" -ErrorAction SilentlyContinue
-}
-
-function Backup-CurrentState {
-    Write-Step "Creating backup of current PUA state..."
-    $backup = @{ Timestamp = Get-Date; GroupPolicy = $null; MpPreference = $null }
-    try {
-        if (Test-Path $Script:GroupPolicyPath) {
-            $backup.GroupPolicy = (Get-ItemProperty -Path $Script:GroupPolicyPath -Name $Script:GroupPolicyValue -ErrorAction SilentlyContinue).$Script:GroupPolicyValue
-        }
-        $backup.MpPreference = (Get-MpPreference).PUAProtection
-    } catch {}
-    $backup | ConvertTo-Json | Out-File -FilePath $Script:BackupFile -Force
-    Write-Step "Backup saved to: $Script:BackupFile" -Level Success
-}
-
-function Restore-PUAState {
-    param([string]$Path)
-    if (-not (Test-Path $Path)) { Write-Step "Backup not found." -Level Error; return $false }
-    try {
-        $b = Get-Content $Path -Raw | ConvertFrom-Json
-        if ($null -ne $b.GroupPolicy) {
-            Set-ItemProperty -Path $Script:GroupPolicyPath -Name $Script:GroupPolicyValue -Value $b.GroupPolicy -Type DWord -Force
-        } else {
-            Remove-ItemProperty -Path $Script:GroupPolicyPath -Name $Script:GroupPolicyValue -ErrorAction SilentlyContinue
-        }
-        $prefValue = if($b.MpPreference -eq 1){'Enabled'}else{'Disabled'}
-        Set-MpPreference -PUAProtection $prefValue -ErrorAction SilentlyContinue
-        & gpupdate /force | Out-Null
-        return $true
-    } catch { return $false }
-}
-
-#endregion
 
 # --- MAIN ---
 

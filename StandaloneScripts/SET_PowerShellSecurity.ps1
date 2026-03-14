@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
     Enables advanced PowerShell Security Logging (Blue Team Hardening).
@@ -24,6 +24,55 @@ function Write-Centered { param([string]$Text, [int]$Width = 60) $clean = $Text 
 function Write-Header { param([string]$Title) Clear-Host; Write-Host ""; $t1 = "$([char]::ConvertFromUtf32(0x1FA9F)) WinAuto $Char_Loop"; Write-Centered "$Bold$FGCyan$t1$Reset"; Write-Boundary; Write-Centered "$Bold$FGCyan$($Title.ToUpper())$Reset"; Write-Boundary }
 function Invoke-AnimatedPause { param([string]$ActionText = "CONTINUE", [int]$Timeout = 10) Write-Host ""; $top = [Console]::CursorTop; $StopWatch = [System.Diagnostics.Stopwatch]::StartNew(); while ($StopWatch.Elapsed.TotalSeconds -lt $Timeout) { if ([Console]::KeyAvailable) { $StopWatch.Stop(); return $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") }; $Elapsed = $StopWatch.Elapsed; $Filled = [Math]::Floor($Elapsed.TotalSeconds); $Dynamic = ""; for ($i=0;$i-lt 10;$i++) { $c = if ($i -lt 5) { "Enter"[$i] } else { " " }; if ($i -lt $Filled) { $Dynamic += "${BGYellow}${FGBlack}$c${Reset}" } else { $Dynamic += "${FGYellow}$c${Reset}" } }; Write-Centered "${FGWhite}$Char_Keyboard Press ${FGDarkGray}$Dynamic${FGDarkGray}${FGWhite} to ${FGYellow}$ActionText${FGDarkGray} | or SKIP$Char_Skip${Reset}"; try { [Console]::SetCursorPosition(0, $top) } catch {}; Start-Sleep -Milliseconds 100 }; $StopWatch.Stop(); return [PSCustomObject]@{VirtualKeyCode=13} }
 function Write-Log { param([string]$Message, [string]$Level = 'INFO') $c = switch($Level){'ERROR'{$FGRed};'WARNING'{$FGYellow};'SUCCESS'{$FGGreen};Default{$FGGray}}; Write-LeftAligned "$c$Message$Reset" }
+
+function Set-RegistryDword { param([string]$Path, [string]$Name, [int]$Value) if (-not (Test-Path $Path)) { New-Item -Path $Path -Force | Out-Null }; Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type DWord -Force | Out-Null }
+function Set-RegistryString { param([string]$Path, [string]$Name, [string]$Value) if (-not (Test-Path $Path)) { New-Item -Path $Path -Force | Out-Null }; Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type String -Force | Out-Null }
+
+Write-Header "POWERSHELL SECURITY"
+
+$RegPath_PS = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell"
+$RegPath_SBL = "$RegPath_PS\ScriptBlockLogging"
+$RegPath_Mod = "$RegPath_PS\ModuleLogging"
+$RegPath_Trn = "$RegPath_PS\Transcription"
+$RegPath_ModNames = "$RegPath_Mod\ModuleNames"
+
+$TranscriptDir = "$env:ProgramData\WinAuto\PowerShell_Transcripts"
+
+try {
+    # 1. Script Block Logging
+    if (-not (Test-Path $RegPath_SBL)) { New-Item -Path $RegPath_SBL -Force | Out-Null }
+    Set-RegistryDword -Path $RegPath_SBL -Name "EnableScriptBlockLogging" -Value 1
+    Set-RegistryDword -Path $RegPath_SBL -Name "EnableScriptBlockInvocationLogging" -Value 1
+    Write-LeftAligned "$FGGreen$Char_HeavyCheck Script Block Logging Enabled (Deep Visibility).$Reset"
+
+    # 2. Module Logging
+    if (-not (Test-Path $RegPath_ModNames)) { New-Item -Path $RegPath_ModNames -Force | Out-Null }
+    Set-RegistryDword -Path $RegPath_Mod -Name "EnableModuleLogging" -Value 1
+    Set-RegistryString -Path $RegPath_ModNames -Name "*" -Value "*"
+    Write-LeftAligned "$FGGreen$Char_HeavyCheck Module Logging Enabled (All Modules).$Reset"
+
+    # 3. Transcription
+    if (-not (Test-Path $RegPath_Trn)) { New-Item -Path $RegPath_Trn -Force | Out-Null }
+    
+    # Create Transcript Directory
+    if (-not (Test-Path $TranscriptDir)) { 
+        New-Item -Path $TranscriptDir -ItemType Directory -Force | Out-Null 
+        # Hide the directory
+        $item = Get-Item -Path $TranscriptDir
+        $item.Attributes = "Hidden"
+    }
+
+    Set-RegistryDword -Path $RegPath_Trn -Name "EnableTranscripting" -Value 1
+    Set-RegistryString -Path $RegPath_Trn -Name "OutputDirectory" -Value $TranscriptDir
+    Set-RegistryDword -Path $RegPath_Trn -Name "EnableInvocationHeader" -Value 1
+    
+    Write-LeftAligned "$FGGreen$Char_HeavyCheck Transcription Enabled.$Reset"
+    Write-LeftAligned "   $FGGray Path: $TranscriptDir$Reset"
+
+} catch {
+
+
+;'WARNING'{$FGYellow};'SUCCESS'{$FGGreen};Default{$FGGray}}; Write-LeftAligned "$c$Message$Reset" }
 
 # REGISTRY HELPER FUNCTIONS
 function Set-RegistryDword { param([string]$Path, [string]$Name, [int]$Value) if (-not (Test-Path $Path)) { New-Item -Path $Path -Force | Out-Null }; Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type DWord -Force | Out-Null }

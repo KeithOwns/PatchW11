@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
     WinAuto PowerShell Script Writing Rules and Visual Examples
@@ -25,172 +25,21 @@ param(
     [switch]$ShowRules
 )
 
-# --- INITIAL SETUP ---
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$ErrorActionPreference = 'Stop'
-Set-StrictMode -Version Latest
-Clear-Host
-
-# --- GLOBAL RESOURCES (Inlined from wa.ps1) ---
-# Centralized definition of ANSI colors and Unicode characters.
-
-# --- ANSI Escape Sequences ---
+# --- STANDALONE UI & LOGGING RESOURCES ---
 $Esc = [char]0x1B
 $Reset = "$Esc[0m"
 $Bold = "$Esc[1m"
+$FGCyan = "$Esc[96m"; $FGGreen = "$Esc[92m"; $FGRed = "$Esc[91m"; $FGYellow = "$Esc[93m"; $FGWhite = "$Esc[97m"; $FGGray = "$Esc[37m"; $FGDarkGray = "$Esc[90m"; $FGDarkBlue = "$Esc[34m"; $BGYellow = "$Esc[103m"; $FGBlack = "$Esc[30m"
+$Char_Warn = [char]0x26A0; $Char_BallotCheck = [char]0x2611; $Char_Keyboard = [char]0x2328; $Char_Loop = [char]::ConvertFromUtf32(0x1F504); $Char_Copyright = [char]0x00A9; $Char_Finger = [char]0x261B; $Char_HeavyCheck = [char]0x2705; $Char_RedCross = [char]0x2716; $Char_HeavyMinus = [char]0x2796; $Char_Skip = [char]0x23ED
 
-# Script Palette (Foreground)
-$FGCyan = "$Esc[96m"
-$FGDarkBlue = "$Esc[34m"
-$FGGreen = "$Esc[92m"
-$FGRed = "$Esc[91m"
-$FGYellow = "$Esc[93m"
-$FGDarkGray = "$Esc[90m"
-$FGDarkRed = "$Esc[31m"
-$FGDarkGreen = "$Esc[32m"
-$FGWhite = "$Esc[97m"
-$FGGray = "$Esc[37m"
-$FGDarkYellow = "$Esc[33m"
-$FGBlack = "$Esc[30m"
+function Write-Boundary { param([string]$Color = $FGDarkBlue) Write-Host "$Color$([string]'_' * 60)$Reset" }
+function Write-LeftAligned { param([string]$Text, [int]$Indent = 2) Write-Host (" " * $Indent + $Text) }
+function Write-Centered { param([string]$Text, [int]$Width = 60) $clean = $Text -replace "\x1B\[[0-9;]*m", ""; $pad = [Math]::Floor(($Width - $clean.Length) / 2); if ($pad -lt 0) { $pad = 0 }; Write-Host (" " * $pad + $Text) }
+function Write-Header { param([string]$Title) Clear-Host; Write-Host ""; $t1 = "$([char]::ConvertFromUtf32(0x1FA9F)) WinAuto $Char_Loop"; Write-Centered "$Bold$FGCyan$t1$Reset"; Write-Boundary; Write-Centered "$Bold$FGCyan$($Title.ToUpper())$Reset"; Write-Boundary }
+function Invoke-AnimatedPause { param([string]$ActionText = "CONTINUE", [int]$Timeout = 10) Write-Host ""; $top = [Console]::CursorTop; $StopWatch = [System.Diagnostics.Stopwatch]::StartNew(); while ($StopWatch.Elapsed.TotalSeconds -lt $Timeout) { if ([Console]::KeyAvailable) { $StopWatch.Stop(); return $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") }; $Elapsed = $StopWatch.Elapsed; $Filled = [Math]::Floor($Elapsed.TotalSeconds); $Dynamic = ""; for ($i=0;$i-lt 10;$i++) { $c = if ($i -lt 5) { "Enter"[$i] } else { " " }; if ($i -lt $Filled) { $Dynamic += "${BGYellow}${FGBlack}$c${Reset}" } else { $Dynamic += "${FGYellow}$c${Reset}" } }; Write-Centered "${FGWhite}$Char_Keyboard Press ${FGDarkGray}$Dynamic${FGDarkGray}${FGWhite} to ${FGYellow}$ActionText${FGDarkGray} | or SKIP$Char_Skip${Reset}"; try { [Console]::SetCursorPosition(0, $top) } catch {}; Start-Sleep -Milliseconds 100 }; $StopWatch.Stop(); return [PSCustomObject]@{VirtualKeyCode=13} }
+function Write-Log { param([string]$Message, [string]$Level = 'INFO') $c = switch($Level){'ERROR'{$FGRed};'WARNING'{$FGYellow};'SUCCESS'{$FGGreen};Default{$FGGray}}; Write-LeftAligned "$c$Message$Reset" }
 
-# Script Palette (Background)
-$BGDarkGreen = "$Esc[42m"
-$BGDarkGray = "$Esc[100m"
-$BGYellow = "$Esc[103m"
-$BGRed = "$Esc[41m"
-$BGWhite = "$Esc[107m"
 
-# --- Unicode Icons & Characters ---
-$Char_HeavyCheck = "[v]" 
-$Char_Warn = "!" 
-$Char_BallotCheck = "[v]" 
-
-$Char_Copyright = "(c)" 
-$Char_Finger = "->" 
-$Char_CheckMark = "v" 
-$Char_FailureX = "x" 
-$Char_RedCross = "x"
-$Char_Hyphen = "-" 
-$Char_EnDash = "-"
-
-# --- FORMATTING HELPERS (Inlined from wa.ps1) ---
-function Get-VisualWidth {
-    param([string]$String)
-    $Width = 0
-    $Chars = $String.ToCharArray()
-    for ($i = 0; $i -lt $Chars.Count; $i++) {
-        if ([char]::IsHighSurrogate($Chars[$i])) { $Width += 2; $i++ } else { $Width += 1 }
-    }
-    return $Width
-}
-
-function Set-ConsoleSnapRight {
-    param([int]$Columns = 60)
-    try {
-        $code = 'using System; using System.Runtime.InteropServices; namespace WinAutoNative { [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left; public int Top; public int Right; public int Bottom; } public class ConsoleUtils { [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow(); [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint); [DllImport("user32.dll")] public static extern int GetSystemMetrics(int nIndex); [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect); } }'
-        if (-not ([System.Management.Automation.PSTypeName]"WinAutoNative.ConsoleUtils").Type) {
-            Add-Type -TypeDefinition $code -ErrorAction SilentlyContinue
-        }
-        $buffer = $Host.UI.RawUI.BufferSize
-        $window = $Host.UI.RawUI.WindowSize
-        $targetHeight = $Host.UI.RawUI.MaxWindowSize.Height
-        
-        # 1. Set Width/Buffer
-        if ($Columns -ne $window.Width) {
-            if ($Columns -lt $window.Width) {
-                $window.Width = $Columns; $Host.UI.RawUI.WindowSize = $window
-                $buffer.Width = $Columns; $Host.UI.RawUI.BufferSize = $buffer
-            }
-            else {
-                $buffer.Width = $Columns; $Host.UI.RawUI.BufferSize = $buffer
-                $window.Width = $Columns; $Host.UI.RawUI.WindowSize = $window
-            }
-        }
-
-        if ($buffer.Height -lt $targetHeight) {
-            $buffer.Height = $targetHeight
-            $Host.UI.RawUI.BufferSize = $buffer
-        }
-        $window.Height = $targetHeight
-        $Host.UI.RawUI.WindowSize = $window
-
-        # 2. Position Adjustment
-        $hWnd = [WinAutoNative.ConsoleUtils]::GetConsoleWindow()
-        $screenW = [WinAutoNative.ConsoleUtils]::GetSystemMetrics(0) # SM_CXSCREEN
-        $screenH = [WinAutoNative.ConsoleUtils]::GetSystemMetrics(1) # SM_CYSCREEN
-        
-        # Get actual pixel width after column resize
-        $rect = New-Object WinAutoNative.RECT
-        if ([WinAutoNative.ConsoleUtils]::GetWindowRect($hWnd, [ref]$rect)) {
-            $pixelW = $rect.Right - $rect.Left
-            $targetX = $screenW - $pixelW
-            
-            # Snap to Right with fixed width
-            [WinAutoNative.ConsoleUtils]::MoveWindow($hWnd, $targetX, 0, $pixelW, $screenH, $true) | Out-Null
-        }
-    }
-    catch {}
-}
-
-Set-ConsoleSnapRight -Columns 60
-
-function Write-Centered {
-    param([string]$Text, [int]$Width = 60, [string]$Color)
-    $cleanText = $Text -replace "$Esc\[[0-9;]*m", ""
-    $padLeft = [Math]::Floor(($Width - $cleanText.Length) / 2)
-    if ($padLeft -lt 0) { $padLeft = 0 }
-    if ($Color) { Write-Host (" " * $padLeft + "$Color$Text$Reset") }
-    else { Write-Host (" " * $padLeft + $Text) }
-}
-
-function Write-LeftAligned {
-    param([string]$Text, [int]$Indent = 2)
-    Write-Host (" " * $Indent + $Text)
-}
-
-function Write-Boundary {
-    param([string]$Color = $FGDarkBlue)
-    Write-Host ("  " + "$Color$([string]'_' * 56)$Reset")
-}
-
-function Write-Header {
-    param([string]$Title)
-    Clear-Host
-    Write-Host ""
-    $WinAutoTitle = "WinAuto"
-    Write-Centered "$Bold$FGCyan$WinAutoTitle$Reset"
-    Write-Centered "$Bold$FGCyan$($Title.ToUpper())$Reset"
-    Write-Boundary
-}
-
-function Write-Footer {
-    Write-Boundary
-    $FooterText = "$Char_Copyright 2026 www.AIIT.support"
-    Write-Centered "$FGCyan$FooterText$Reset"
-}
-
-function Write-FlexLine {
-    param([string]$LeftIcon, [string]$LeftText, [string]$RightText, [bool]$IsActive, [int]$Width = 60, [string]$ActiveColor = "$BGDarkGreen")
-    $Circle = "*"
-    if ($IsActive) {
-        $LeftDisplay = "$FGGray$LeftIcon $FGGray$LeftText$Reset"
-        $RightDisplay = "$ActiveColor  $Circle$Reset$FGGray$RightText$Reset  "
-        $LeftRaw = "$LeftIcon $LeftText"; $RightRaw = "  $Circle$RightText  " 
-    }
-    else {
-        $LeftDisplay = "$FGDarkGray$LeftIcon $FGDarkGray$LeftText$Reset"
-        $RightDisplay = "$BGDarkGray$FGBlack$Circle  $Reset${FGDarkGray}Off$Reset "
-        $LeftRaw = "$LeftIcon $LeftText"; $RightRaw = "$Circle  Off "
-    }
-    $SpaceCount = $Width - ($LeftRaw.Length + $RightRaw.Length + 3) - 1
-    if ($SpaceCount -lt 1) { $SpaceCount = 1 }
-    Write-Host ("   " + $LeftDisplay + (" " * $SpaceCount) + $RightDisplay)
-}
-
-function Write-BodyTitle {
-    param([string]$Title)
-    Write-LeftAligned "$FGWhite$Bold$Title$Reset"
-}
 
 # --- LOGIC ---
 
